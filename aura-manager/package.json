@@ -1,0 +1,27 @@
+{
+  "name": "@astralcore/aura-manager",
+  "version": "1.0.0",
+  "description": "Astral Core Management Dashboard + Telegram Bot for @astralcore/sl-aura sessions",
+  "main": "index.js",
+  "bin": {
+    "aura-manager": "./index.js"
+  },
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "publishConfig": { "access": "public" },
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "mongoose": "^8.0.0",
+    "node-telegram-bot-api": "^0.66.0",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "compression": "^1.7.4"
+  },
+  "keywords": ["astral-core", "whatsapp", "session-manager", "dashboard", "telegram-bot"],
+  "author": "ASTRAL CORE",
+  "license": "MIT"
+}

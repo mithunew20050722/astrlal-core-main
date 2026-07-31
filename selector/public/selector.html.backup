@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bot Selector • ASTRAL CORE</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#05030d;
+  --text:#ede9f6;
+  --muted:#4a3d6a;
+  --muted2:#7c6fa0;
+  --border:#1e1535;
+  --u-accent:#00ff88;
+  --u-accent2:#00d4ff;
+  --a-accent:#a855f7;
+  --a-accent2:#f59e0b;
+}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Syne',sans-serif;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:20px;overflow:hidden;
+}
+
+/* Animated background */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 55% 50% at 10% 10%,rgba(0,255,136,0.05) 0%,transparent 60%),
+    radial-gradient(ellipse 55% 50% at 90% 90%,rgba(168,85,247,0.06) 0%,transparent 60%),
+    radial-gradient(ellipse 40% 40% at 50% 50%,rgba(245,158,11,0.03) 0%,transparent 60%);
+}
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.012) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,0.012) 1px,transparent 1px);
+  background-size:52px 52px;
+}
+
+.scan{position:fixed;left:0;top:0;width:100%;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,255,136,0.25),rgba(168,85,247,0.25),transparent);
+  animation:scan 8s linear infinite;z-index:0;pointer-events:none}
+@keyframes scan{0%{top:-2px;opacity:0}5%{opacity:1}95%{opacity:1}100%{top:100vh;opacity:0}}
+
+.wrap{position:relative;z-index:1;width:min(820px,100%);display:flex;flex-direction:column;align-items:center;gap:36px}
+
+/* Header */
+.hdr{text-align:center}
+.hdr-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+  border-radius:99px;padding:6px 16px;margin-bottom:16px;
+  font-size:.65rem;color:var(--muted2);letter-spacing:3px;text-transform:uppercase;
+  font-family:'JetBrains Mono',monospace;
+}
+.hdr-dot{width:6px;height:6px;border-radius:50%;background:var(--u-accent);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.hdr-title{
+  font-family:'Orbitron',monospace;font-size:clamp(1.4rem,4vw,2rem);font-weight:900;
+  letter-spacing:4px;color:var(--text);margin-bottom:8px;
+}
+.hdr-sub{font-size:.8rem;color:var(--muted2);letter-spacing:1px}
+
+/* Cards */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:20px;width:100%}
+@media(max-width:540px){.cards{grid-template-columns:1fr}}
+
+.card{
+  background:rgba(10,8,20,0.9);
+  border-radius:20px;padding:32px 28px;
+  cursor:pointer;transition:all .3s;
+  text-decoration:none;color:inherit;
+  position:relative;overflow:hidden;
+  border:1px solid var(--border);
+}
+.card::before{
+  content:'';position:absolute;inset:0;opacity:0;transition:opacity .3s;
+  border-radius:20px;
+}
+.card:hover{transform:translateY(-6px)}
+
+/* Unity card */
+.card-unity{border-color:rgba(0,255,136,0.15)}
+.card-unity::before{background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,255,136,0.08),transparent)}
+.card-unity:hover{border-color:rgba(0,255,136,0.4);box-shadow:0 20px 60px rgba(0,255,136,0.1),0 0 0 1px rgba(0,255,136,0.15)}
+.card-unity:hover::before{opacity:1}
+.card-unity .card-top-line{background:linear-gradient(90deg,var(--u-accent),var(--u-accent2),transparent)}
+.card-unity .card-icon-bg{background:rgba(0,255,136,0.08);border-color:rgba(0,255,136,0.2)}
+.card-unity .card-name{color:var(--u-accent)}
+.card-unity .card-btn{background:rgba(0,255,136,0.1);border-color:rgba(0,255,136,0.3);color:var(--u-accent)}
+.card-unity:hover .card-btn{background:rgba(0,255,136,0.2);border-color:rgba(0,255,136,0.6)}
+.card-unity .tag{background:rgba(0,255,136,0.08);border-color:rgba(0,255,136,0.15);color:var(--u-accent)}
+
+/* Aura card */
+.card-aura{border-color:rgba(168,85,247,0.15)}
+.card-aura::before{background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(168,85,247,0.08),transparent)}
+.card-aura:hover{border-color:rgba(168,85,247,0.4);box-shadow:0 20px 60px rgba(168,85,247,0.1),0 0 0 1px rgba(168,85,247,0.15)}
+.card-aura:hover::before{opacity:1}
+.card-aura .card-top-line{background:linear-gradient(90deg,var(--a-accent),var(--a-accent2),transparent)}
+.card-aura .card-icon-bg{background:rgba(168,85,247,0.08);border-color:rgba(168,85,247,0.2)}
+.card-aura .card-name{color:var(--a-accent)}
+.card-aura .card-btn{background:rgba(168,85,247,0.1);border-color:rgba(168,85,247,0.3);color:var(--a-accent)}
+.card-aura:hover .card-btn{background:rgba(168,85,247,0.2);border-color:rgba(168,85,247,0.6)}
+.card-aura .tag{background:rgba(168,85,247,0.08);border-color:rgba(168,85,247,0.15);color:var(--a-accent)}
+
+.card-top-line{position:absolute;top:0;left:0;right:0;height:2px}
+
+.card-head{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.card-icon-bg{width:52px;height:52px;border-radius:14px;border:1px solid;display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0}
+.card-name{font-family:'Orbitron',monospace;font-size:1.1rem;font-weight:900;letter-spacing:2px}
+.card-version{font-size:.62rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;letter-spacing:1px;margin-top:3px}
+
+.card-desc{font-size:.82rem;color:var(--muted2);line-height:1.7;margin-bottom:20px}
+
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:24px}
+.tag{font-size:.6rem;padding:3px 10px;border-radius:99px;border:1px solid;font-family:'JetBrains Mono',monospace;letter-spacing:1px;font-weight:600}
+
+.card-btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;padding:12px;border-radius:11px;
+  border:1px solid;font-size:.85rem;font-weight:700;
+  transition:all .2s;font-family:'Syne',sans-serif;
+  letter-spacing:.5px;
+}
+
+/* Status dots */
+.card-status{display:flex;align-items:center;gap:7px;margin-bottom:14px}
+.sdot{width:7px;height:7px;border-radius:50%;animation:sdotPulse 2s infinite}
+.sdot.green{background:var(--u-accent);box-shadow:0 0 8px rgba(0,255,136,0.6)}
+.sdot.purple{background:var(--a-accent);box-shadow:0 0 8px rgba(168,85,247,0.6)}
+@keyframes sdotPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.85);opacity:.7}}
+.slabel{font-size:.65rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;letter-spacing:1px}
+
+/* Footer */
+.footer{text-align:center;font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;letter-spacing:2px}
+.footer span{color:var(--muted2)}
+
+/* Redirect overlay */
+#overlay{
+  display:none;position:fixed;inset:0;z-index:999;
+  background:rgba(5,3,13,0.97);backdrop-filter:blur(10px);
+  align-items:center;justify-content:center;flex-direction:column;gap:20px;
+}
+#overlay.show{display:flex}
+.ov-icon{font-size:3rem;animation:ovPulse 1s ease-in-out infinite}
+@keyframes ovPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.ov-text{font-family:'Orbitron',monospace;font-size:1rem;font-weight:900;letter-spacing:3px}
+.ov-sub{font-size:.75rem;color:var(--muted2);font-family:'JetBrains Mono',monospace}
+.ov-bar{width:200px;height:3px;background:rgba(255,255,255,0.06);border-radius:99px;overflow:hidden;margin-top:8px}
+.ov-fill{height:100%;border-radius:99px;animation:fill 1.2s ease forwards}
+@keyframes fill{from{width:0%}to{width:100%}}
+</style>
+</head>
+<body>
+<div class="scan"></div>
+
+<div id="overlay">
+  <div class="ov-icon" id="ov-icon">🧲</div>
+  <div class="ov-text" id="ov-text">LOADING</div>
+  <div class="ov-sub" id="ov-sub">Connecting to dashboard...</div>
+  <div class="ov-bar"><div class="ov-fill" id="ov-fill" style="background:#00ff88"></div></div>
+</div>
+
+<div class="wrap">
+  <div class="hdr">
+    <div class="hdr-badge"><div class="hdr-dot"></div> ASTRAL CORE</div>
+    <div class="hdr-title">SELECT YOUR BOT</div>
+    <div class="hdr-sub">Choose which dashboard to open</div>
+  </div>
+
+  <div class="cards">
+    <!-- Unity MD -->
+    <div class="card card-unity" onclick="go('unity')">
+      <div class="card-top-line"></div>
+      <div class="card-head">
+        <div class="card-icon-bg">🧲</div>
+        <div>
+          <div class="card-name">UNITY-MD</div>
+          <div class="card-version">v1.0 • PORT 3001</div>
+        </div>
+      </div>
+      <div class="card-status">
+        <div class="sdot green"></div>
+        <div class="slabel">RUNNING ON :3001</div>
+      </div>
+      <div class="card-desc">Original multi-session WhatsApp bot. Full command suite with group management, downloads & more.</div>
+      <div class="tags">
+        <span class="tag">MULTI-SESSION</span>
+        <span class="tag">350+ CMDS</span>
+        <span class="tag">STABLE</span>
+      </div>
+      <div class="card-btn">🧲 Open UNITY-MD Dashboard →</div>
+    </div>
+
+    <!-- SL AURA -->
+    <div class="card card-aura" onclick="go('aura')">
+      <div class="card-top-line"></div>
+      <div class="card-head">
+        <div class="card-icon-bg">🌟</div>
+        <div>
+          <div class="card-name">SL AURA</div>
+          <div class="card-version">v2.0 • PORT 3002</div>
+        </div>
+      </div>
+      <div class="card-status">
+        <div class="sdot purple"></div>
+        <div class="slabel">RUNNING ON :3002</div>
+      </div>
+      <div class="card-desc">Next-gen Sri Lankan WhatsApp bot with purple aura theme. Enhanced downloads, boost tools & more.</div>
+      <div class="tags">
+        <span class="tag">MULTI-SESSION</span>
+        <span class="tag">350+ CMDS</span>
+        <span class="tag">NEW</span>
+        <span class="tag">🇱🇰</span>
+      </div>
+      <div class="card-btn">🌟 Open SL AURA Dashboard →</div>
+    </div>
+  </div>
+
+  <div class="footer">® <span>ASTRAL CORE</span> • Sri Lanka 🇱🇰 • All rights reserved</div>
+  <div style="display:flex;gap:14px;font-size:.68rem;font-family:'JetBrains Mono',monospace;color:var(--muted2)">
+    <a href="/pair" style="color:inherit;text-decoration:none">🔗 Pair a Number →</a>
+  </div>
+</div>
+
+<script>
+function go(bot) {
+  const overlay = document.getElementById('overlay');
+  const icon    = document.getElementById('ov-icon');
+  const text    = document.getElementById('ov-text');
+  const sub     = document.getElementById('ov-sub');
+  const fill    = document.getElementById('ov-fill');
+
+  if (bot === 'unity') {
+    icon.textContent = '🧲';
+    text.textContent = 'UNITY-MD';
+    text.style.color = '#00ff88';
+    fill.style.background = '#00ff88';
+    sub.textContent  = 'Redirecting to port 3001...';
+    overlay.classList.add('show');
+    setTimeout(() => { window.location.href = window.location.protocol + '//' + window.location.hostname + ':3001/login.html'; }, 1200);
+  } else {
+    icon.textContent = '🌟';
+    text.textContent = 'SL AURA';
+    text.style.color = '#a855f7';
+    fill.style.background = 'linear-gradient(90deg,#a855f7,#f59e0b)';
+    sub.textContent  = 'Redirecting to port 3002...';
+    overlay.classList.add('show');
+    setTimeout(() => { window.location.href = window.location.protocol + '//' + window.location.hostname + ':3002/login.html'; }, 1200);
+  }
+}
+</script>
+</body>
+</html>

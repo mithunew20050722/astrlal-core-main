@@ -1,0 +1,2068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UNITY-MD • Connect WhatsApp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Orbitron:wght@400;700;900&family=Syne:wght@400;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Orbitron:wght@400;700;900&family=Syne:wght@400;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#020408;
+  --bg2:#030610;
+  --card:rgba(6,10,20,0.85);
+  --g1:#25d366;
+  --g2:#00e5ff;
+  --g3:#a259ff;
+  --g4:#ff6b6b;
+  --g5:#ffd93d;
+  --text:#f0f4ff;
+  --sub:#4a5280;
+  --border:rgba(37,211,102,0.12);
+  --red:#ff4757;
+  --amber:#ffd93d;
+}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Space Grotesk',sans-serif;
+  min-height:100vh;
+  overflow-x:hidden;
+  position:relative;
+}
+
+/* ═══ AURORA BACKGROUND ═══ */
+#aurora{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.aura{position:absolute;border-radius:50%;filter:blur(80px);animation:auraFloat ease-in-out infinite}
+.aura1{width:700px;height:700px;background:radial-gradient(circle,rgba(37,211,102,0.09),transparent 70%);top:-200px;left:-200px;animation-duration:12s;animation-delay:0s}
+.aura2{width:600px;height:600px;background:radial-gradient(circle,rgba(0,229,255,0.07),transparent 70%);top:20%;right:-200px;animation-duration:9s;animation-delay:2s}
+.aura3{width:500px;height:500px;background:radial-gradient(circle,rgba(162,89,255,0.07),transparent 70%);bottom:-100px;left:30%;animation-duration:14s;animation-delay:4s}
+.aura4{width:400px;height:400px;background:radial-gradient(circle,rgba(255,107,107,0.05),transparent 70%);bottom:20%;right:5%;animation-duration:10s;animation-delay:1s}
+@keyframes auraFloat{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(30px,-30px) scale(1.05)}66%{transform:translate(-20px,20px) scale(.95)}}
+
+/* GRID */
+#grid{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(37,211,102,0.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(37,211,102,0.025) 1px,transparent 1px);
+  background-size:64px 64px;
+  mask-image:radial-gradient(ellipse 70% 70% at 50% 50%,black,transparent);
+}
+
+/* SCAN LINE */
+.scan{position:fixed;top:-1px;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,229,255,0.3),rgba(37,211,102,0.4),rgba(162,89,255,0.2),transparent);
+  animation:scan 6s linear infinite;z-index:1;pointer-events:none}
+@keyframes scan{0%{top:-1px}100%{top:100vh}}
+
+/* CANVAS */
+#bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+/* CORNER DECORATIONS */
+.cb{position:fixed;width:36px;height:36px;z-index:2;pointer-events:none;opacity:.3}
+.cb.tl{top:20px;left:20px;border-top:2px solid var(--g1);border-left:2px solid var(--g1)}
+.cb.tr{top:20px;right:20px;border-top:2px solid var(--g2);border-right:2px solid var(--g2)}
+.cb.bl{bottom:20px;left:20px;border-bottom:2px solid var(--g3);border-left:2px solid var(--g3)}
+.cb.br{bottom:20px;right:20px;border-bottom:2px solid var(--g1);border-right:2px solid var(--g1)}
+.cd{position:fixed;width:5px;height:5px;border-radius:50%;z-index:2;pointer-events:none;animation:cdAnim 2s ease-in-out infinite}
+.cd.tl{top:20px;left:20px;background:var(--g1);animation-delay:0s}
+.cd.tr{top:20px;right:20px;background:var(--g2);animation-delay:.5s}
+.cd.bl{bottom:20px;left:20px;background:var(--g3);animation-delay:1s}
+.cd.br{bottom:20px;right:20px;background:var(--g1);animation-delay:1.5s}
+@keyframes cdAnim{0%,100%{opacity:.2;transform:scale(1)}50%{opacity:1;transform:scale(2)}}
+
+/* ═══ LAYOUT ═══ */
+.page{position:relative;z-index:3;width:100%;max-width:520px;margin:0 auto;padding:32px 20px 60px}
+
+/* ═══ HERO HEADER ═══ */
+.hero{text-align:center;padding:40px 0 24px;animation:riseIn .9s cubic-bezier(.22,1,.36,1)}
+@keyframes riseIn{from{opacity:0;transform:translateY(50px)}to{opacity:1;transform:translateY(0)}}
+
+.logo-orbit{position:relative;display:inline-block;margin-bottom:20px}
+.logo-orbit .orbit-ring{
+  position:absolute;top:50%;left:50%;border-radius:50%;
+  border:1px solid;transform:translate(-50%,-50%);
+  animation:orbitSpin linear infinite;
+}
+.orbit-ring.r1{width:216px;height:216px;border-color:rgba(37,211,102,0.2);animation-duration:8s}
+.orbit-ring.r2{width:270px;height:270px;border-color:rgba(0,229,255,0.12);animation-duration:14s;animation-direction:reverse}
+.orbit-ring.r3{width:338px;height:338px;border-color:rgba(162,89,255,0.08);animation-duration:20s}
+.orbit-ring::after{
+  content:'';position:absolute;width:8px;height:8px;border-radius:50%;
+  background:currentColor;top:50%;margin-top:-4px;right:-4px;
+  box-shadow:0 0 8px currentColor;
+}
+@keyframes orbitSpin{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+
+.logo-icon-wrap{
+  width:180px;height:180px;border-radius:40px;position:relative;z-index:1;
+  background:linear-gradient(135deg,rgba(37,211,102,0.15),rgba(0,229,255,0.08));
+  border:1px solid rgba(37,211,102,0.25);
+  display:inline-flex;align-items:center;justify-content:center;
+  overflow:hidden;
+  box-shadow:0 0 50px rgba(37,211,102,0.15),inset 0 0 30px rgba(37,211,102,0.05);
+  animation:logoGlow 4s ease-in-out infinite;
+}
+.logo-icon-wrap img{width:100%;height:100%;object-fit:cover;border-radius:40px;display:block;}
+@keyframes logoGlow{
+  0%,100%{box-shadow:0 0 50px rgba(37,211,102,0.15),inset 0 0 30px rgba(37,211,102,0.05)}
+  50%{box-shadow:0 0 80px rgba(37,211,102,0.3),0 0 120px rgba(0,229,255,0.1),inset 0 0 40px rgba(37,211,102,0.1)}
+}
+
+.hero-title{
+  font-family:'Orbitron',monospace;font-size:2rem;font-weight:900;letter-spacing:4px;
+  background:linear-gradient(90deg,var(--g1),var(--g2),var(--g3),var(--g1));
+  background-size:300% 100%;
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  animation:shimmer 5s linear infinite;
+  margin-bottom:6px;
+}
+@keyframes shimmer{0%{background-position:300% 0}100%{background-position:-300% 0}}
+
+.hero-sub{color:var(--sub);font-size:.65rem;letter-spacing:5px;text-transform:uppercase;
+  font-family:'JetBrains Mono',monospace;margin-bottom:18px}
+
+/* Typewriter box */
+.tw-box{
+  background:rgba(37,211,102,0.03);
+  border:1px solid rgba(37,211,102,0.1);
+  border-radius:12px;padding:14px 20px;
+  min-height:52px;display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;
+}
+.tw-box::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:linear-gradient(180deg,var(--g1),var(--g2));border-radius:2px;
+}
+.tw-text{font-size:.9rem;font-family:'Space Grotesk',sans-serif;font-weight:500;line-height:1.5;text-align:left;padding-left:8px}
+.tw-cursor{display:inline-block;width:2px;height:1.1em;vertical-align:middle;margin-left:1px;animation:blink .7s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+/* Message styles */
+.style-green .tw-text{color:var(--g1)}
+.style-cyan .tw-text{color:var(--g2)}
+.style-purple .tw-text{color:var(--g3)}
+.style-yellow .tw-text{color:var(--g5)}
+.style-red .tw-text{color:var(--g4)}
+.style-white .tw-text{color:var(--text)}
+.tw-box.style-green{border-color:rgba(37,211,102,0.2);background:rgba(37,211,102,0.04)}
+.tw-box.style-cyan{border-color:rgba(0,229,255,0.2);background:rgba(0,229,255,0.04)}
+.tw-box.style-purple{border-color:rgba(162,89,255,0.2);background:rgba(162,89,255,0.04)}
+.tw-box.style-yellow{border-color:rgba(255,217,61,0.2);background:rgba(255,217,61,0.04)}
+.tw-box.style-red{border-color:rgba(255,107,107,0.2);background:rgba(255,107,107,0.04)}
+.tw-box.style-white{border-color:rgba(240,244,255,0.1);background:rgba(240,244,255,0.02)}
+
+/* ═══ STATS ═══ */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:20px 0;animation:riseIn .9s .15s cubic-bezier(.22,1,.36,1) both}
+.stat{
+  background:var(--card);backdrop-filter:blur(20px);
+  border-radius:16px;padding:16px 10px;text-align:center;
+  border:1px solid rgba(255,255,255,0.05);
+  position:relative;overflow:hidden;transition:transform .25s,border-color .25s;
+}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:2px 2px 0 0}
+.stat:nth-child(1)::before{background:linear-gradient(90deg,var(--g1),var(--g2))}
+.stat:nth-child(2)::before{background:linear-gradient(90deg,var(--g2),var(--g3))}
+.stat:nth-child(3)::before{background:linear-gradient(90deg,var(--g3),var(--g4))}
+.stat:hover{transform:translateY(-3px);border-color:rgba(255,255,255,0.1)}
+.stat-val{font-size:1.7rem;font-weight:800;font-family:'JetBrains Mono',monospace;
+  background:linear-gradient(135deg,var(--g1),var(--g2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.stat-lbl{font-size:.58rem;color:var(--sub);letter-spacing:3px;text-transform:uppercase;
+  margin-top:4px;font-family:'JetBrains Mono',monospace}
+
+/* ═══ MAIN CARD ═══ */
+.card{
+  background:var(--card);backdrop-filter:blur(24px);
+  border:1px solid var(--border);border-radius:24px;padding:32px;
+  position:relative;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(37,211,102,0.03),0 40px 80px rgba(0,0,0,0.6);
+  animation:riseIn .9s .25s cubic-bezier(.22,1,.36,1) both;
+}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(37,211,102,0.6),rgba(0,229,255,0.3),rgba(162,89,255,0.2),transparent)}
+.card::after{content:'';position:absolute;top:0;right:0;width:100px;height:100px;
+  background:radial-gradient(circle at top right,rgba(0,229,255,0.06),transparent);border-radius:0 24px 0 0}
+
+.card-head{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+.card-icon{
+  width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  font-size:1.3rem;flex-shrink:0;
+  background:linear-gradient(135deg,rgba(37,211,102,0.15),rgba(0,229,255,0.08));
+  border:1px solid rgba(37,211,102,0.2);
+  box-shadow:0 0 20px rgba(37,211,102,0.1);
+}
+.card-title{font-size:1.1rem;font-weight:700;letter-spacing:-.2px}
+.card-subtitle{font-size:.8rem;color:var(--sub);margin-top:2px}
+
+/* INPUT */
+.input-wrap{position:relative;margin-bottom:12px}
+.flag-wrap{display:flex;gap:8px;align-items:stretch}
+/* Country code selector */
+.cc-wrap{position:relative;flex-shrink:0}
+.cc-btn{display:flex;align-items:center;gap:6px;background:rgba(37,211,102,0.04);border:1.5px solid rgba(37,211,102,0.12);border-radius:12px;padding:0 12px;height:52px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:.85rem;font-weight:700;color:var(--g1);white-space:nowrap;user-select:none;transition:all .2s}
+.cc-btn:hover,.cc-btn.open{border-color:rgba(37,211,102,0.45);box-shadow:0 0 0 3px rgba(37,211,102,0.07)}
+.cc-flag{font-size:1.1rem;line-height:1}
+.cc-arrow{color:var(--sub);font-size:.65rem;transition:transform .2s}
+.cc-btn.open .cc-arrow{transform:rotate(180deg)}
+.cc-dropdown{position:absolute;top:calc(100% + 6px);left:0;z-index:50;background:#0a0f18;border:1.5px solid rgba(37,211,102,0.18);border-radius:14px;width:270px;max-height:280px;overflow:hidden;display:none;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,.85)}
+.cc-dropdown.open{display:flex}
+.cc-search{padding:10px 12px;background:#070c12;border:none;border-bottom:1px solid rgba(37,211,102,0.1);color:var(--text);font-size:.84rem;outline:none}
+.cc-search::placeholder{color:var(--sub)}
+.cc-list{overflow-y:auto;flex:1}
+.cc-item{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;font-size:.82rem;transition:background .15s}
+.cc-item:hover,.cc-item.selected{background:rgba(37,211,102,0.08);color:var(--g1)}
+.cc-item-flag{font-size:1.05rem;flex-shrink:0}
+.cc-item-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--sub)}
+.cc-item:hover .cc-item-name,.cc-item.selected .cc-item-name{color:var(--text)}
+.cc-item-code{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--g1);font-size:.8rem}
+.phone-num-wrap{flex:1;position:relative}
+.phone-preview{font-size:.68rem;color:var(--sub);margin-top:4px;font-family:'JetBrains Mono',monospace;letter-spacing:.5px;padding-left:2px}
+.phone-preview span{color:var(--g1)}
+/* Visitor info panel */
+.vinfo-panel{background:rgba(6,10,20,0.7);border:1px solid rgba(37,211,102,0.07);border-radius:18px;padding:14px;margin:14px 0;position:relative;overflow:hidden}
+.vinfo-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,229,255,0.35),rgba(162,89,255,0.18),transparent)}
+.vinfo-head{font-size:.54rem;letter-spacing:4px;text-transform:uppercase;color:var(--sub);font-family:'JetBrains Mono',monospace;margin-bottom:11px;display:flex;align-items:center;gap:8px}
+.vinfo-head::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.04)}
+.vinfo-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+.vinfo-item{background:rgba(255,255,255,0.018);border:1px solid rgba(255,255,255,0.04);border-radius:11px;padding:9px 11px;display:flex;align-items:center;gap:9px;transition:border-color .2s}
+.vinfo-item:hover{border-color:rgba(37,211,102,0.12)}
+.vinfo-item.full{grid-column:1/-1}
+.vinfo-icon{font-size:1rem;flex-shrink:0;line-height:1}
+.vinfo-label{font-size:.52rem;color:var(--sub);letter-spacing:2px;text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:2px}
+.vinfo-val{font-size:.76rem;font-weight:700;color:var(--text);font-family:'JetBrains Mono',monospace;word-break:break-all}
+.vinfo-val.loading{color:var(--sub);animation:vload .8s ease-in-out infinite}
+@keyframes vload{0%,100%{opacity:.35}50%{opacity:1}}
+.batt-bar-wrap{height:4px;background:rgba(255,255,255,0.06);border-radius:10px;overflow:hidden;margin-top:4px;width:100%}
+.batt-bar-fill{height:100%;border-radius:10px;transition:width 1s ease,background .5s}
+.batt-status-txt{font-size:.6rem;margin-top:3px;font-family:'JetBrains Mono',monospace;color:var(--sub)}
+.batt-status-txt.charging{color:var(--amber)}
+.signal-dots{display:flex;gap:2px;align-items:flex-end;margin-top:4px}
+.sdot-b{width:3px;border-radius:2px;background:var(--g1);opacity:.15}
+.sdot-b.on{opacity:1}
+input[type=text]{
+  flex:1;background:rgba(37,211,102,0.03);
+  border:1.5px solid rgba(37,211,102,0.1);
+  border-radius:12px;padding:0 16px;height:52px;
+  color:var(--text);font-size:1rem;outline:none;
+  transition:all .25s;font-family:'Space Grotesk',sans-serif;width:100%;
+}
+input[type=text]:focus{
+  border-color:rgba(37,211,102,0.45);
+  background:rgba(37,211,102,0.05);
+  box-shadow:0 0 0 4px rgba(37,211,102,0.08),0 0 20px rgba(37,211,102,0.05);
+}
+input[type=text]::placeholder{color:rgba(74,82,128,0.6)}
+
+/* BUTTON */
+.btn{
+  background:linear-gradient(135deg,var(--g1),#00c853);
+  color:#fff;border:none;border-radius:12px;
+  padding:0 24px;height:52px;font-size:.95rem;font-weight:700;
+  cursor:pointer;transition:all .25s cubic-bezier(.22,1,.36,1);
+  white-space:nowrap;font-family:'Space Grotesk',sans-serif;
+  box-shadow:0 4px 20px rgba(37,211,102,0.25);
+  position:relative;overflow:hidden;
+}
+.btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.1),transparent);opacity:0;transition:opacity .2s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(37,211,102,0.4)}
+.btn:hover::before{opacity:1}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-full{width:100%;margin-bottom:10px}
+.btn-ghost{background:rgba(37,211,102,0.06);border:1.5px solid rgba(37,211,102,0.2);
+  color:var(--g1);box-shadow:none}
+.btn-ghost:hover{background:rgba(37,211,102,0.12);box-shadow:0 4px 20px rgba(37,211,102,0.15)}
+
+/* GLOW HR */
+.ghr{height:1px;border:none;margin:22px 0;
+  background:linear-gradient(90deg,transparent,rgba(37,211,102,0.3),rgba(0,229,255,0.15),transparent)}
+
+/* ═══ CODE BOX ═══ */
+.code-box{display:none;background:rgba(37,211,102,0.03);border:1px solid rgba(37,211,102,0.18);
+  border-radius:18px;padding:28px 20px;text-align:center;margin-top:18px}
+.code-box.show{display:block;animation:popIn .5s cubic-bezier(.22,1,.36,1)}
+@keyframes popIn{from{opacity:0;transform:scale(.94) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.code-label{color:var(--sub);font-size:.6rem;text-transform:uppercase;letter-spacing:4px;
+  margin-bottom:18px;font-family:'JetBrains Mono',monospace}
+.code-digits{display:flex;justify-content:center;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.digit-group{display:flex;gap:5px}
+.digit-sep{display:flex;align-items:center;padding:0 3px;color:rgba(37,211,102,0.3);font-size:1.5rem;font-family:'JetBrains Mono',monospace}
+.digit{
+  width:40px;height:52px;border-radius:12px;
+  background:rgba(37,211,102,0.06);border:1.5px solid rgba(37,211,102,0.18);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.5rem;font-weight:900;color:var(--g1);
+  font-family:'JetBrains Mono',monospace;
+  animation:digitPulse 2.5s ease-in-out infinite;
+  box-shadow:0 0 15px rgba(37,211,102,0.06);
+}
+.digit:nth-child(1){animation-delay:0s} .digit:nth-child(2){animation-delay:.15s}
+.digit:nth-child(3){animation-delay:.3s} .digit:nth-child(4){animation-delay:.45s}
+@keyframes digitPulse{
+  0%,100%{border-color:rgba(37,211,102,0.18);box-shadow:0 0 15px rgba(37,211,102,0.06)}
+  50%{border-color:rgba(37,211,102,0.45);box-shadow:0 0 25px rgba(37,211,102,0.18)}
+}
+.code-timer{font-size:.75rem;color:var(--sub);margin-bottom:14px;font-family:'JetBrains Mono',monospace}
+.copy-btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:9px 24px;margin:8px auto 16px;
+  background:rgba(37,211,102,0.08);border:1px solid rgba(37,211,102,0.3);
+  border-radius:30px;color:var(--g1);font-size:.8rem;font-weight:700;
+  cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all .2s;
+}
+.copy-btn:hover{background:rgba(37,211,102,0.18);transform:translateY(-1px)}
+.copy-btn.copied{background:rgba(37,211,102,0.22);border-color:var(--g1)}
+.code-hint{color:var(--sub);font-size:.83rem;line-height:1.8}
+.code-hint strong{color:var(--text)}
+
+/* ═══ BADGE ═══ */
+.sbadge{display:inline-flex;align-items:center;gap:7px;padding:7px 16px;border-radius:30px;
+  font-size:.75rem;font-weight:600;margin-top:16px;font-family:'JetBrains Mono',monospace}
+.sb-conn{background:rgba(255,217,61,.07);border:1px solid rgba(255,217,61,.2);color:var(--amber)}
+.sb-pair{background:rgba(37,211,102,.07);border:1px solid rgba(37,211,102,.2);color:var(--g1)}
+.sb-ok{background:rgba(37,211,102,.12);border:1px solid rgba(37,211,102,.3);color:var(--g1)}
+.sb-err{background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);color:var(--red)}
+.sdot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+.sdot.pulse{animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.6)}}
+
+/* ═══ STEPS ═══ */
+.steps{margin-top:18px}
+.step{display:flex;gap:14px;margin-bottom:12px;align-items:flex-start;
+  animation:riseIn .6s ease both}
+.step:nth-child(1){animation-delay:.3s} .step:nth-child(2){animation-delay:.4s}
+.step:nth-child(3){animation-delay:.5s} .step:nth-child(4){animation-delay:.6s}
+.step-n{
+  min-width:30px;height:30px;border-radius:50%;flex-shrink:0;margin-top:1px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.72rem;font-weight:800;font-family:'JetBrains Mono',monospace;
+}
+.step:nth-child(1) .step-n{background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.25);color:var(--g1)}
+.step:nth-child(2) .step-n{background:rgba(0,229,255,0.1);border:1px solid rgba(0,229,255,0.25);color:var(--g2)}
+.step:nth-child(3) .step-n{background:rgba(162,89,255,0.1);border:1px solid rgba(162,89,255,0.25);color:var(--g3)}
+.step:nth-child(4) .step-n{background:rgba(255,217,61,0.1);border:1px solid rgba(255,217,61,0.25);color:var(--g5)}
+.step-t{font-size:.85rem;color:var(--sub);line-height:1.7}
+.step-t strong{color:var(--text)}
+
+/* ═══ ERROR / BLOCKED ═══ */
+.err-msg{display:none;background:rgba(255,71,87,.06);border:1px solid rgba(255,71,87,.2);
+  border-radius:10px;padding:11px 15px;color:var(--red);font-size:.84rem;margin-top:12px}
+.err-msg.show{display:block;animation:fadeUp .3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.blocked-msg{display:none;background:rgba(255,71,87,.04);border:1px solid rgba(255,71,87,.18);
+  border-radius:16px;padding:28px;text-align:center;margin-top:16px}
+.blocked-msg.show{display:block;animation:popIn .4s ease}
+.blocked-icon{font-size:2.8rem;margin-bottom:12px}
+.blocked-title{font-size:1.05rem;font-weight:700;color:var(--red);margin-bottom:8px}
+.blocked-text{font-size:.83rem;color:var(--sub);line-height:1.7}
+
+/* ═══ SUCCESS ═══ */
+.success-box{display:none;text-align:center;padding:16px 0}
+.success-box.show{display:block;animation:popIn .5s cubic-bezier(.22,1,.36,1)}
+.success-icon{font-size:4rem;margin-bottom:14px;display:block;animation:bounce .7s cubic-bezier(.22,1,.36,1)}
+@keyframes bounce{from{transform:scale(0) rotate(-30deg)}80%{transform:scale(1.1) rotate(5deg)}to{transform:scale(1) rotate(0)}}
+.success-title{font-size:1.4rem;font-weight:800;color:var(--g1);margin-bottom:6px}
+.success-num{color:var(--sub);font-size:.9rem;margin-bottom:16px;font-family:'JetBrains Mono',monospace}
+.success-msg{color:var(--sub);font-size:.85rem;margin-bottom:20px}
+
+/* ═══ FEATURES STRIP ═══ */
+.features-strip{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:8px;
+  margin:20px 0;animation:riseIn .9s .35s cubic-bezier(.22,1,.36,1) both;
+}
+.feat-chip{
+  background:var(--card);border-radius:14px;padding:14px 14px;
+  border:1px solid rgba(255,255,255,0.05);
+  display:flex;align-items:center;gap:10px;
+  transition:transform .2s,border-color .2s;position:relative;overflow:hidden;
+}
+.feat-chip::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .2s;
+  background:linear-gradient(135deg,rgba(37,211,102,0.05),transparent)}
+.feat-chip:hover{transform:translateY(-2px);border-color:rgba(255,255,255,0.1)}
+.feat-chip:hover::before{opacity:1}
+.feat-chip-icon{font-size:1.4rem;flex-shrink:0}
+.feat-chip-name{font-size:.78rem;font-weight:700;color:var(--text)}
+.feat-chip-val{font-size:.65rem;color:var(--sub);font-family:'JetBrains Mono',monospace;margin-top:1px}
+
+/* ═══ COMMUNITY SECTION ═══ */
+.community{
+  background:var(--card);backdrop-filter:blur(20px);
+  border:1px solid rgba(255,255,255,0.05);border-radius:24px;padding:28px;
+  margin-top:16px;position:relative;overflow:hidden;
+  animation:riseIn .9s .45s cubic-bezier(.22,1,.36,1) both;
+}
+.community::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(162,89,255,0.5),rgba(0,229,255,0.3),transparent)}
+.community-title{
+  font-family:'Orbitron',monospace;font-size:.75rem;font-weight:900;letter-spacing:3px;
+  color:var(--g3);text-transform:uppercase;margin-bottom:18px;
+  display:flex;align-items:center;gap:8px;
+}
+.community-title::before,.community-title::after{content:'';flex:1;height:1px;background:rgba(162,89,255,0.15)}
+
+/* Owner cards */
+.owners-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:18px}
+.owner-card{
+  background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);
+  border-radius:14px;padding:14px 12px;text-align:center;
+  transition:all .25s;cursor:pointer;position:relative;overflow:hidden;text-decoration:none;
+  display:block;
+}
+.owner-card::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .2s;
+  background:linear-gradient(135deg,rgba(37,211,102,0.08),transparent)}
+.owner-card:hover{border-color:rgba(37,211,102,0.3);transform:translateY(-2px)}
+.owner-card:hover::before{opacity:1}
+.owner-avatar{
+  width:44px;height:44px;border-radius:50%;margin:0 auto 8px;
+  display:flex;align-items:center;justify-content:center;font-size:1.3rem;
+}
+.owner-card:nth-child(1) .owner-avatar{background:linear-gradient(135deg,rgba(37,211,102,0.15),rgba(0,229,255,0.1));border:1px solid rgba(37,211,102,0.2)}
+.owner-card:nth-child(2) .owner-avatar{background:linear-gradient(135deg,rgba(0,229,255,0.15),rgba(162,89,255,0.1));border:1px solid rgba(0,229,255,0.2)}
+.owner-card:nth-child(3) .owner-avatar{background:linear-gradient(135deg,rgba(162,89,255,0.15),rgba(255,107,107,0.1));border:1px solid rgba(162,89,255,0.2)}
+.owner-card:nth-child(4) .owner-avatar{background:linear-gradient(135deg,rgba(255,217,61,0.15),rgba(37,211,102,0.1));border:1px solid rgba(255,217,61,0.2)}
+.owner-card:nth-child(5) .owner-avatar{background:linear-gradient(135deg,rgba(255,107,107,0.15),rgba(162,89,255,0.1));border:1px solid rgba(255,107,107,0.2)}
+.owner-card:nth-child(6) .owner-avatar{background:linear-gradient(135deg,rgba(0,229,255,0.15),rgba(37,211,102,0.1));border:1px solid rgba(0,229,255,0.2)}
+.owner-name{font-size:.72rem;font-weight:700;color:var(--text);margin-bottom:3px}
+.owner-role{font-size:.6rem;color:var(--sub);font-family:'JetBrains Mono',monospace}
+
+/* Social buttons */
+.social-btns{display:flex;flex-direction:column;gap:10px}
+.social-btn{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 18px;border-radius:14px;
+  text-decoration:none;transition:all .25s;position:relative;overflow:hidden;
+  border:1px solid;
+}
+.social-btn::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .2s}
+.social-btn:hover::before{opacity:1}
+.social-btn:hover{transform:translateX(4px)}
+.social-btn.group{
+  background:rgba(37,211,102,0.05);border-color:rgba(37,211,102,0.2);
+}
+.social-btn.group::before{background:linear-gradient(90deg,rgba(37,211,102,0.08),transparent)}
+.social-btn.channel{
+  background:rgba(0,229,255,0.05);border-color:rgba(0,229,255,0.2);
+}
+.social-btn.channel::before{background:linear-gradient(90deg,rgba(0,229,255,0.08),transparent)}
+.social-btn-icon{
+  width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;
+  font-size:1.3rem;flex-shrink:0;
+}
+.social-btn.group .social-btn-icon{background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.2)}
+.social-btn.channel .social-btn-icon{background:rgba(0,229,255,0.1);border:1px solid rgba(0,229,255,0.2)}
+.social-btn-info{flex:1}
+.social-btn-title{font-weight:700;font-size:.88rem;color:var(--text)}
+.social-btn.group .social-btn-title{color:var(--g1)}
+.social-btn.channel .social-btn-title{color:var(--g2)}
+.social-btn-desc{font-size:.7rem;color:var(--sub);margin-top:2px}
+.social-btn-arrow{font-size:1rem;color:var(--sub);flex-shrink:0;transition:transform .2s}
+.social-btn:hover .social-btn-arrow{transform:translateX(3px);color:var(--text)}
+
+/* ═══ FOOTER ═══ */
+.footer{
+  margin-top:28px;text-align:center;color:rgba(74,82,128,0.5);
+  font-size:.65rem;letter-spacing:2px;text-transform:uppercase;
+  font-family:'JetBrains Mono',monospace;
+  animation:riseIn .9s .6s cubic-bezier(.22,1,.36,1) both;
+}
+.footer a{color:var(--g1);text-decoration:none}
+.footer-dots{display:flex;justify-content:center;gap:6px;margin-top:14px}
+.fdot{width:4px;height:4px;border-radius:50%;animation:fdotAnim 2s ease-in-out infinite}
+.fdot:nth-child(1){background:var(--g1);animation-delay:0s}
+.fdot:nth-child(2){background:var(--g2);animation-delay:.3s}
+.fdot:nth-child(3){background:var(--g3);animation-delay:.6s}
+.fdot:nth-child(4){background:var(--g5);animation-delay:.9s}
+.fdot:nth-child(5){background:var(--g4);animation-delay:1.2s}
+@keyframes fdotAnim{0%,100%{transform:scaleY(1);opacity:.4}50%{transform:scaleY(2.5);opacity:1}}
+
+/* ═══ MUSIC BUTTON ═══ */
+#music-btn{
+  position:fixed;bottom:28px;right:28px;
+  width:50px;height:50px;border-radius:50%;
+  background:rgba(37,211,102,0.08);backdrop-filter:blur(12px);
+  border:1px solid rgba(37,211,102,0.25);
+  display:none;align-items:center;justify-content:center;
+  cursor:pointer;z-index:100;
+  box-shadow:0 4px 24px rgba(0,0,0,0.4),0 0 24px rgba(37,211,102,0.08);
+  transition:transform .15s,background .2s,border-color .2s;
+}
+#music-btn:hover{background:rgba(37,211,102,0.16);transform:scale(1.08)}
+.bars{display:flex;align-items:flex-end;gap:2.5px;height:20px}
+.bar{width:3px;background:var(--g1);border-radius:3px;transform-origin:bottom}
+.bar:nth-child(1){animation:b1 .55s ease-in-out infinite alternate}
+.bar:nth-child(2){animation:b2 .45s ease-in-out infinite alternate}
+.bar:nth-child(3){animation:b3 .65s ease-in-out infinite alternate}
+.bar:nth-child(4){animation:b2 .5s ease-in-out infinite alternate}
+@keyframes b1{from{height:4px}to{height:14px}}
+@keyframes b2{from{height:8px}to{height:20px}}
+@keyframes b3{from{height:5px}to{height:12px}}
+.paused-bars .bar{animation:none!important;height:4px!important}
+
+/* ═══ PLAY OVERLAY ═══ */
+#play-overlay{
+  position:fixed;inset:0;z-index:9999;
+  background:rgba(2,4,8,0.95);backdrop-filter:blur(16px);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
+}
+.ov-logo{font-family:'Orbitron',monospace;font-size:1.6rem;font-weight:900;letter-spacing:5px;
+  background:linear-gradient(90deg,var(--g1),var(--g2),var(--g3));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:4px;animation:shimmer 4s linear infinite;background-size:300% 100%}
+.ov-sub{color:rgba(240,244,255,0.35);font-family:'JetBrains Mono',monospace;
+  font-size:.6rem;letter-spacing:5px;text-transform:uppercase;margin-bottom:36px}
+.ov-ring{width:120px;height:120px;position:relative;display:flex;align-items:center;
+  justify-content:center;cursor:pointer;margin-bottom:24px}
+.ov-ring::before,.ov-ring::after{
+  content:'';position:absolute;inset:0;border-radius:50%;
+  border:1.5px solid rgba(37,211,102,0.25);
+  animation:ringEx 2.2s ease-out infinite;
+}
+.ov-ring::after{inset:-18px;animation-delay:.8s;border-color:rgba(0,229,255,0.12)}
+@keyframes ringEx{0%{transform:scale(.9);opacity:.8}100%{transform:scale(1.2);opacity:0}}
+.ov-btn{
+  width:82px;height:82px;border-radius:50%;z-index:1;position:relative;
+  background:linear-gradient(135deg,var(--g1),#00c853);
+  display:flex;align-items:center;justify-content:center;
+  font-size:2rem;color:#fff;
+  box-shadow:0 0 60px rgba(37,211,102,0.5),0 0 120px rgba(37,211,102,0.2);
+  transition:transform .15s;
+}
+.ov-btn:hover{transform:scale(1.1)}
+.ov-label{color:rgba(240,244,255,0.5);font-size:.78rem;letter-spacing:2px;
+  font-family:'Space Grotesk',sans-serif;margin-bottom:28px}
+.ov-bars{display:flex;gap:4px;align-items:flex-end;height:22px}
+.ov-bar{width:3px;border-radius:3px;background:rgba(37,211,102,0.35)}
+.ov-bar:nth-child(1){height:6px;animation:b1 .55s ease-in-out infinite alternate}
+.ov-bar:nth-child(2){height:12px;animation:b2 .45s ease-in-out infinite alternate}
+.ov-bar:nth-child(3){height:8px;animation:b3 .65s ease-in-out infinite alternate}
+.ov-bar:nth-child(4){height:16px;animation:b2 .5s ease-in-out infinite alternate}
+.ov-bar:nth-child(5){height:10px;animation:b1 .6s ease-in-out infinite alternate}
+.ov-bar:nth-child(6){height:14px;animation:b3 .48s ease-in-out infinite alternate}
+
+/* ═══ SETTINGS ═══ */
+.mode-btn{background:rgba(37,211,102,0.04);border:1.5px solid rgba(37,211,102,0.12);
+  border-radius:10px;padding:9px 18px;color:var(--sub);font-family:'Space Grotesk',sans-serif;
+  font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s}
+.mode-btn:hover{border-color:rgba(37,211,102,0.3);color:var(--text)}
+.mode-btn.active{background:rgba(37,211,102,0.12);border-color:rgba(37,211,102,0.5);color:var(--g1)}
+.feat-row{display:flex;align-items:center;justify-content:space-between;
+  padding:10px 0;border-bottom:1px solid rgba(37,211,102,0.05)}
+.feat-row:last-child{border-bottom:none;padding-bottom:0}
+.feat-lbl{font-size:.84rem;color:var(--text)} .feat-desc{font-size:.72rem;color:var(--sub);margin-top:2px}
+.tog{position:relative;width:44px;height:24px;flex-shrink:0}
+.tog input{opacity:0;width:0;height:0}
+.tog-sl{position:absolute;inset:0;border-radius:24px;cursor:pointer;
+  background:rgba(37,211,102,0.08);border:1.5px solid rgba(37,211,102,0.15);transition:all .25s}
+.tog input:checked+.tog-sl{background:rgba(37,211,102,0.25);border-color:rgba(37,211,102,0.5)}
+.tog-sl::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;
+  border-radius:50%;background:var(--sub);transition:all .25s}
+.tog input:checked+.tog-sl::after{transform:translateX(20px);background:var(--g1)}
+.cmd-group-card{background:rgba(6,10,20,0.9);border:1px solid var(--border);border-radius:16px;margin-bottom:10px;overflow:hidden}
+.cmd-group-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;transition:background .2s}
+.cmd-group-hdr:hover{background:rgba(37,211,102,0.03)}
+.cmd-group-hdr-title{font-size:.85rem;font-weight:700;color:var(--text)}
+.cmd-group-hdr-meta{font-size:.72rem;color:var(--sub);font-family:'JetBrains Mono',monospace}
+.cmd-group-body{display:none;padding:0 18px 14px;border-top:1px solid rgba(37,211,102,0.06)}
+.cmd-group-body.open{display:block}
+.cmd-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(37,211,102,0.04)}
+.cmd-row:last-child{border-bottom:none}
+.cmd-name{font-size:.8rem;color:var(--text);font-family:'JetBrains Mono',monospace}
+.cat-tog-row{display:flex;gap:8px}
+.cat-tog-btn{font-size:.65rem;padding:4px 10px;border-radius:20px;cursor:pointer;
+  font-family:'JetBrains Mono',monospace;font-weight:700;border:1px solid;transition:all .15s}
+.cat-on{background:rgba(37,211,102,0.08);border-color:rgba(37,211,102,0.25);color:var(--g1)}
+.cat-on:hover{background:rgba(37,211,102,0.2)}
+.cat-off{background:rgba(255,71,87,0.06);border-color:rgba(255,71,87,0.2);color:var(--red)}
+.cat-off:hover{background:rgba(255,71,87,0.15)}
+
+/* ═══ NEON SCROLLBAR ═══ */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--g1),var(--g2),var(--g3));border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,var(--g2),var(--g3))}
+
+/* ═══ TOP NEON PROGRESS BAR ═══ */
+#top-bar{
+  position:fixed;top:0;left:0;right:0;height:2px;z-index:9999;pointer-events:none;
+  background:linear-gradient(90deg,var(--g1),var(--g2),var(--g3),var(--g1));
+  background-size:300% 100%;
+  animation:topBarShimmer 3s linear infinite, topBarLoad 1.2s cubic-bezier(.22,1,.36,1) forwards;
+  transform-origin:left;
+  box-shadow:0 0 12px rgba(37,211,102,0.8),0 0 24px rgba(0,229,255,0.4);
+}
+@keyframes topBarShimmer{0%{background-position:300% 0}100%{background-position:-300% 0}}
+@keyframes topBarLoad{from{scaleX:0}to{scaleX:1}}
+
+/* ═══ SHOOTING STARS ═══ */
+#meteors{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.meteor{
+  position:absolute;top:0;width:1px;height:80px;
+  background:linear-gradient(180deg,rgba(37,211,102,0),rgba(37,211,102,0.8),rgba(0,229,255,0.4),transparent);
+  border-radius:2px;animation:meteorFall linear infinite;opacity:0;
+}
+@keyframes meteorFall{
+  0%{transform:translateY(-100px) rotate(15deg);opacity:0}
+  5%{opacity:1}
+  80%{opacity:.6}
+  100%{transform:translateY(110vh) rotate(15deg);opacity:0}
+}
+
+/* ═══ LOGO ORBIT GLOW ═══ */
+.logo-orbit{margin-bottom:36px}
+.logo-glow{
+  position:absolute;inset:-20px;border-radius:50%;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse,rgba(37,211,102,0.18) 0%,rgba(0,229,255,0.08) 40%,transparent 70%);
+  animation:logoGlow2 4s ease-in-out infinite;
+}
+@keyframes logoGlow2{
+  0%,100%{opacity:.7;transform:scale(1)}
+  50%{opacity:1;transform:scale(1.08)}
+}
+.logo-icon-wrap{
+  box-shadow:0 0 60px rgba(37,211,102,0.25),0 0 120px rgba(37,211,102,0.1),inset 0 0 40px rgba(37,211,102,0.08);
+}
+
+/* ═══ ANIMATED CARD BORDER ═══ */
+.card{
+  position:relative;
+}
+.card-border-anim{
+  position:absolute;inset:0;border-radius:24px;pointer-events:none;z-index:0;
+  background:conic-gradient(from var(--angle),rgba(37,211,102,0.5),rgba(0,229,255,0.3),rgba(162,89,255,0.4),rgba(37,211,102,0.5));
+  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;
+  padding:1px;animation:borderSpin 4s linear infinite;
+}
+@property --angle{syntax:'<angle>';initial-value:0deg;inherits:false}
+@keyframes borderSpin{to{--angle:360deg}}
+
+/* ═══ FEATURE CHIP ENHANCEMENTS ═══ */
+.feat-chip{
+  position:relative;
+}
+.feat-chip::after{
+  content:'';position:absolute;inset:0;border-radius:14px;opacity:0;transition:opacity .3s;
+  background:linear-gradient(135deg,rgba(37,211,102,0.08),rgba(0,229,255,0.05));
+  box-shadow:inset 0 0 0 1px rgba(37,211,102,0.2);
+}
+.feat-chip:hover::after{opacity:1}
+.feat-chip:hover .feat-chip-icon{animation:iconBounce .4s cubic-bezier(.22,1,.36,1)}
+@keyframes iconBounce{0%,100%{transform:scale(1)}50%{transform:scale(1.3) rotate(-5deg)}}
+
+/* ═══ STAT CARD GLOW ═══ */
+.stat:nth-child(1):hover{box-shadow:0 0 30px rgba(37,211,102,0.15)}
+.stat:nth-child(2):hover{box-shadow:0 0 30px rgba(0,229,255,0.15)}
+.stat:nth-child(3):hover{box-shadow:0 0 30px rgba(162,89,255,0.15)}
+
+/* ═══ FLOATING PARTICLES ═══ */
+.fp{
+  position:fixed;border-radius:50%;pointer-events:none;z-index:0;
+  animation:fpFloat ease-in-out infinite;opacity:0;
+}
+@keyframes fpFloat{
+  0%{transform:translateY(0) scale(0);opacity:0}
+  20%{opacity:1}
+  80%{opacity:.5}
+  100%{transform:translateY(-120px) scale(1.5);opacity:0}
+}
+
+/* ═══ HERO SECTION GLOW BACKDROP ═══ */
+.hero::before{
+  content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:320px;height:320px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,rgba(37,211,102,0.07),rgba(0,229,255,0.04),transparent 70%);
+  animation:heroGlow 6s ease-in-out infinite;z-index:-1;
+}
+@keyframes heroGlow{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.1)}}
+.hero{position:relative}
+
+/* ═══ LOGO SHINE SWEEP ═══ */
+.logo-icon-wrap::after{
+  content:'';position:absolute;inset:0;border-radius:40px;
+  background:linear-gradient(135deg,rgba(255,255,255,0) 0%,rgba(255,255,255,0.12) 50%,rgba(255,255,255,0) 100%);
+  background-size:200% 200%;animation:logoShine 4s ease-in-out infinite;
+}
+@keyframes logoShine{0%,100%{background-position:200% 200%}50%{background-position:0% 0%}}
+
+/* ═══ LANGUAGE SWITCHER ═══ */
+#lang-sw{
+  position:fixed;top:18px;left:50%;transform:translateX(-50%);
+  z-index:300;display:flex;gap:3px;
+  background:rgba(4,8,18,0.92);backdrop-filter:blur(20px);
+  border:1px solid rgba(37,211,102,0.2);border-radius:32px;padding:4px;
+  box-shadow:0 4px 28px rgba(0,0,0,0.5),0 0 0 1px rgba(37,211,102,0.05);
+}
+.lbtn{
+  padding:5px 13px;border-radius:26px;border:1px solid transparent;
+  background:transparent;color:rgba(74,82,128,0.8);
+  font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:700;
+  cursor:pointer;transition:all .2s;letter-spacing:.5px;white-space:nowrap;
+}
+.lbtn.active{
+  background:rgba(37,211,102,0.14);color:var(--g1);
+  border-color:rgba(37,211,102,0.4);
+  box-shadow:0 0 12px rgba(37,211,102,0.12);
+}
+.lbtn:hover:not(.active){color:var(--text);background:rgba(255,255,255,0.04)}
+
+</style>
+</head>
+<body>
+<div id="top-bar"></div>
+<!-- METEORS -->
+<div id="meteors"></div>
+
+<!-- AUDIO -->
+<audio id="bg-audio" loop>
+  <source src="https://www.image2url.com/r2/default/audio/1776828648132-dc28289e-8ace-4f20-a45c-714757dfee3d.mp3" type="audio/mpeg">
+</audio>
+
+<!-- PLAY OVERLAY -->
+<div id="play-overlay">
+  <div class="ov-logo">UNITY-MD</div>
+  <div class="ov-sub" data-i18n="ov-sub">® TEAM ASTRAL CORE • Sri Lanka 🇱🇰</div>
+  <div class="ov-ring" onclick="startAudio()">
+    <div class="ov-btn">▶</div>
+  </div>
+  <div class="ov-label" data-i18n="ov-label">Tap to enter the experience</div>
+  <div class="ov-bars">
+    <div class="ov-bar"></div><div class="ov-bar"></div>
+    <div class="ov-bar"></div><div class="ov-bar"></div>
+    <div class="ov-bar"></div><div class="ov-bar"></div>
+  </div>
+</div>
+
+<!-- MUSIC BUTTON -->
+<div id="music-btn" onclick="toggleAudio()">
+  <div class="bars">
+    <div class="bar"></div><div class="bar"></div>
+    <div class="bar"></div><div class="bar"></div>
+  </div>
+</div>
+
+<!-- LANGUAGE SWITCHER -->
+<div id="lang-sw">
+  <button class="lbtn active" onclick="setLang('en')">EN</button>
+  <button class="lbtn" onclick="setLang('si')">සිංහල</button>
+  <button class="lbtn" onclick="setLang('ta')">தமிழ்</button>
+</div>
+
+<!-- BACKGROUNDS -->
+<div id="aurora">
+  <div class="aura aura1"></div><div class="aura aura2"></div>
+  <div class="aura aura3"></div><div class="aura aura4"></div>
+</div>
+<div id="grid"></div>
+<div class="scan"></div>
+<canvas id="bg-canvas"></canvas>
+
+<!-- CORNERS -->
+<div class="cb tl"></div><div class="cb tr"></div>
+<div class="cb bl"></div><div class="cb br"></div>
+<div class="cd tl"></div><div class="cd tr"></div>
+<div class="cd bl"></div><div class="cd br"></div>
+
+<!-- ════════════════ MAIN PAGE ════════════════ -->
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="logo-orbit">
+      <div class="orbit-ring r1" style="color:rgba(37,211,102,0.3)"></div>
+      <div class="orbit-ring r2" style="color:rgba(0,229,255,0.2)"></div>
+      <div class="orbit-ring r3" style="color:rgba(162,89,255,0.15)"></div>
+      <div class="logo-icon-wrap"><div class="logo-glow"></div><img src="/media/unity_thumb.jpg" alt="UNITY-MD"/></div>
+    </div>
+    <div class="hero-title">UNITY-MD</div>
+    <div class="hero-sub" data-i18n="hero-sub">® TEAM ASTRAL CORE • WhatsApp Bot Platform</div>
+
+    <!-- Typewriter box -->
+    <div class="tw-box style-green" id="tw-box">
+      <div class="tw-text" id="tw-text"><span class="tw-cursor" style="background:var(--g1)"></span></div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat"><div class="stat-val" id="cnt-on">—</div><div class="stat-lbl" data-i18n="stat-online">Online</div></div>
+    <div class="stat"><div class="stat-val" id="cnt-usr">—</div><div class="stat-lbl" data-i18n="stat-users">Users</div></div>
+    <div class="stat"><div class="stat-val" id="cnt-grp">—</div><div class="stat-lbl" data-i18n="stat-groups">Groups</div></div>
+  </div>
+
+  <!-- FEATURE CHIPS -->
+  <div class="features-strip">
+    <div class="feat-chip">
+      <span class="feat-chip-icon">🤖</span>
+      <div><div class="feat-chip-name" data-i18n="feat-ai-name">AI Powered</div><div class="feat-chip-val" data-i18n="feat-ai-val">Gemini Pro</div></div>
+    </div>
+    <div class="feat-chip">
+      <span class="feat-chip-icon">⚡</span>
+      <div><div class="feat-chip-name" data-i18n="feat-cmd-name">660+ Commands</div><div class="feat-chip-val" data-i18n="feat-cmd-val">All categories</div></div>
+    </div>
+    <div class="feat-chip">
+      <span class="feat-chip-icon">🛡️</span>
+      <div><div class="feat-chip-name" data-i18n="feat-prot-name">Full Protection</div><div class="feat-chip-val" data-i18n="feat-prot-val">Anti-spam & raid</div></div>
+    </div>
+    <div class="feat-chip">
+      <span class="feat-chip-icon">🇱🇰</span>
+      <div><div class="feat-chip-name" data-i18n="feat-sl-name">Sri Lanka Built</div><div class="feat-chip-val" data-i18n="feat-sl-val">Cinesubz & more</div></div>
+    </div>
+  </div>
+
+  <!-- MAIN PAIR CARD -->
+  <div class="card">
+    <div class="card-border-anim"></div>
+    <div class="card-head">
+      <div class="card-icon">🔗</div>
+      <div>
+        <div class="card-title" data-i18n="card-title">Connect Your WhatsApp</div>
+        <div class="card-subtitle" data-i18n="card-subtitle">No QR scan needed — instant pairing code</div>
+      </div>
+    </div>
+
+    <!-- Visitor Info Panel -->
+    <div class="vinfo-panel">
+      <div class="vinfo-head" data-i18n="vinfo-head">🖥️ Your Device Info</div>
+      <div class="vinfo-grid">
+
+        <!-- IP + Country (full width) -->
+        <div class="vinfo-item full">
+          <div class="vinfo-icon">🌐</div>
+          <div style="flex:1;min-width:0">
+            <div class="vinfo-label" data-i18n="vinfo-ip">IP Address</div>
+            <div class="vinfo-val loading" id="vi-ip">Fetching…</div>
+          </div>
+          <div style="font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--sub);white-space:nowrap;text-align:right;line-height:1.6" id="vi-ctry"></div>
+        </div>
+
+        <!-- ISP -->
+        <div class="vinfo-item full">
+          <div class="vinfo-icon">🏢</div>
+          <div style="flex:1;min-width:0">
+            <div class="vinfo-label" data-i18n="vinfo-isp">ISP / Provider</div>
+            <div class="vinfo-val loading" id="vi-isp">Fetching…</div>
+          </div>
+        </div>
+
+        <!-- Battery -->
+        <div class="vinfo-item">
+          <div class="vinfo-icon">🔋</div>
+          <div style="flex:1">
+            <div class="vinfo-label" data-i18n="vinfo-battery">Battery</div>
+            <div class="vinfo-val loading" id="vi-batt">—</div>
+            <div class="batt-bar-wrap"><div class="batt-bar-fill" id="vi-bfill" style="width:0%"></div></div>
+            <div class="batt-status-txt" id="vi-bst"></div>
+          </div>
+        </div>
+
+        <!-- Network -->
+        <div class="vinfo-item">
+          <div class="vinfo-icon">📶</div>
+          <div style="flex:1">
+            <div class="vinfo-label" data-i18n="vinfo-network">Network</div>
+            <div class="vinfo-val loading" id="vi-net">—</div>
+            <div class="signal-dots" id="vi-sig">
+              <div class="sdot-b" style="height:4px"></div>
+              <div class="sdot-b" style="height:7px"></div>
+              <div class="sdot-b" style="height:10px"></div>
+              <div class="sdot-b" style="height:13px"></div>
+              <div class="sdot-b" style="height:16px"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Platform / OS -->
+        <div class="vinfo-item">
+          <div class="vinfo-icon">💻</div>
+          <div style="flex:1">
+            <div class="vinfo-label" data-i18n="vinfo-platform">Platform</div>
+            <div class="vinfo-val" id="vi-plat">—</div>
+          </div>
+        </div>
+
+        <!-- Browser -->
+        <div class="vinfo-item">
+          <div class="vinfo-icon">🌍</div>
+          <div style="flex:1">
+            <div class="vinfo-label" data-i18n="vinfo-browser">Browser</div>
+            <div class="vinfo-val" id="vi-browser">—</div>
+          </div>
+        </div>
+
+        <!-- Screen -->
+        <div class="vinfo-item">
+          <div class="vinfo-icon">📐</div>
+          <div style="flex:1">
+            <div class="vinfo-label" data-i18n="vinfo-screen">Screen</div>
+            <div class="vinfo-val" id="vi-scr">—</div>
+          </div>
+        </div>
+
+        <!-- Language -->
+        <div class="vinfo-item">
+          <div class="vinfo-icon">🗣️</div>
+          <div style="flex:1">
+            <div class="vinfo-label" data-i18n="vinfo-language">Language</div>
+            <div class="vinfo-val" id="vi-lang">—</div>
+          </div>
+        </div>
+
+        <!-- Timezone -->
+        <div class="vinfo-item">
+          <div class="vinfo-icon">🕐</div>
+          <div style="flex:1">
+            <div class="vinfo-label" data-i18n="vinfo-timezone">Timezone</div>
+            <div class="vinfo-val" id="vi-tz">—</div>
+          </div>
+        </div>
+
+        <!-- Local Time -->
+        <div class="vinfo-item">
+          <div class="vinfo-icon">⏰</div>
+          <div style="flex:1">
+            <div class="vinfo-label" data-i18n="vinfo-localtime">Local Time</div>
+            <div class="vinfo-val" id="vi-time">—</div>
+          </div>
+        </div>
+
+        <!-- CPU Cores -->
+        <div class="vinfo-item">
+          <div class="vinfo-icon">⚙️</div>
+          <div style="flex:1">
+            <div class="vinfo-label" data-i18n="vinfo-cpu">CPU Cores</div>
+            <div class="vinfo-val" id="vi-cpu">—</div>
+          </div>
+        </div>
+
+        <!-- RAM -->
+        <div class="vinfo-item">
+          <div class="vinfo-icon">🧠</div>
+          <div style="flex:1">
+            <div class="vinfo-label" data-i18n="vinfo-ram">Device RAM</div>
+            <div class="vinfo-val" id="vi-ram">—</div>
+          </div>
+        </div>
+
+        <!-- Touch Support -->
+        <div class="vinfo-item">
+          <div class="vinfo-icon">👆</div>
+          <div style="flex:1">
+            <div class="vinfo-label" data-i18n="vinfo-touch">Touch Points</div>
+            <div class="vinfo-val" id="vi-touch">—</div>
+          </div>
+        </div>
+
+        <!-- Online Status -->
+        <div class="vinfo-item">
+          <div class="vinfo-icon">🟢</div>
+          <div style="flex:1">
+            <div class="vinfo-label" data-i18n="vinfo-status">Status</div>
+            <div class="vinfo-val" id="vi-online">—</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div id="form-wrap">
+      <div class="flag-wrap">
+        <!-- Country Code Selector -->
+        <div class="cc-wrap" id="ccWrap">
+          <div class="cc-btn" id="ccBtn" onclick="toggleCC()">
+            <span class="cc-flag" id="ccFlag">🇱🇰</span>
+            <span id="ccCode">+94</span>
+            <span class="cc-arrow">▼</span>
+          </div>
+          <div class="cc-dropdown" id="ccDropdown">
+            <input class="cc-search" id="ccSearch" type="text" placeholder="Search country…" data-i18n-ph="cc-search-ph" oninput="filterCC(this.value)" autocomplete="off">
+            <div class="cc-list" id="ccList"></div>
+          </div>
+        </div>
+        <div class="phone-num-wrap">
+          <input type="text" id="numIn" placeholder="7X XXX XXXX" maxlength="13" inputmode="numeric" style="border-radius:12px;width:100%">
+          <div class="phone-preview">Full: <span id="previewNum">+94…</span></div>
+        </div>
+        <button class="btn" id="pairBtn" onclick="startPair()" data-i18n="btn-pair">Get Code</button>
+      </div>
+      <div class="err-msg" id="err-msg"></div>
+    </div>
+
+    <div class="blocked-msg" id="blk-msg">
+      <div class="blocked-icon">🔒</div>
+      <div class="blocked-title" data-i18n="blk-title">Number Blocked</div>
+      <div class="blocked-text" data-i18n-html="blk-text">This number has been blocked by the admin.<br>Please contact support to unblock your number.</div>
+    </div>
+
+    <div class="code-box" id="code-box">
+      <div class="code-label" data-i18n="code-label">Your Pairing Code</div>
+      <div class="code-digits" id="code-digits">
+        <div class="digit-group" id="dg1">
+          <div class="digit" id="d0">-</div><div class="digit" id="d1">-</div>
+          <div class="digit" id="d2">-</div><div class="digit" id="d3">-</div>
+        </div>
+        <div class="digit-sep">–</div>
+        <div class="digit-group" id="dg2">
+          <div class="digit" id="d4">-</div><div class="digit" id="d5">-</div>
+          <div class="digit" id="d6">-</div><div class="digit" id="d7">-</div>
+        </div>
+      </div>
+      <div class="code-timer" id="code-timer"></div>
+      <button class="copy-btn" id="copy-btn" onclick="copyCode()" data-i18n="copy-btn">📋 Copy Code</button>
+      <div class="code-hint" data-i18n-html="code-hint">
+        Open WhatsApp → <strong>Settings → Linked Devices</strong><br>
+        → <strong>Link a Device</strong> → Enter this code ✅
+      </div>
+      <div>
+        <span class="sbadge sb-pair" id="status-badge">
+          <span class="sdot pulse"></span>
+          <span id="status-txt" data-i18n="status-waiting">Waiting for scan...</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="success-box" id="success-box">
+      <span class="success-icon">🎉</span>
+      <div class="success-title" data-i18n="success-title">Bot is Active!</div>
+      <div class="success-num" id="success-num"></div>
+      <div class="success-msg" data-i18n-html="success-msg">Send <strong style="color:var(--g1)">.menu</strong> on WhatsApp to get started.</div>
+      <button class="btn btn-full" onclick="openSettings()" data-i18n="btn-settings">⚙️ Configure Bot Settings</button>
+      <button class="btn btn-full btn-ghost" onclick="resetForm()" data-i18n="btn-reset">Connect Another Number</button>
+    </div>
+
+    <div class="steps" id="steps">
+      <div class="ghr"></div>
+      <div class="step"><div class="step-n">1</div><div class="step-t" data-i18n-html="step1"><strong>Enter your number</strong> with country code (e.g. 94771234567)</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-t" data-i18n-html="step2"><strong>Click Get Code</strong> and wait a few seconds</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-t" data-i18n-html="step3">Go to WhatsApp → <strong>Settings → Linked Devices → Link a Device</strong></div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-t" data-i18n-html="step4"><strong>Enter the 8-digit code</strong> — your bot activates instantly ⚡</div></div>
+    </div>
+  </div>
+
+  <!-- COMMUNITY CARD -->
+  <div class="community">
+    <div class="community-title" data-i18n="community-title">Connect With Us</div>
+
+    <!-- Owners -->
+    <div style="font-size:.6rem;color:var(--sub);letter-spacing:3px;text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:12px" data-i18n="team-label">🧑‍💻 Our Team — Click to Chat</div>
+    <div class="owners-grid" style="grid-template-columns:repeat(2,1fr)">
+      <a class="owner-card" href="https://t.me/Podda_200" target="_blank">
+        <div class="owner-avatar">👑</div>
+        <div class="owner-name">OWNER</div>
+        <div class="owner-role">TELEGRAM</div>
+      </a>
+      <a class="owner-card" href="https://t.me/nmd_coder" target="_blank">
+        <div class="owner-avatar">🛠️</div>
+        <div class="owner-name">DEVELOPER</div>
+        <div class="owner-role">TELEGRAM</div>
+      </a>
+    </div>
+
+    <div class="ghr"></div>
+
+    <div class="social-btns">
+      <a class="social-btn group" href="https://chat.whatsapp.com/Fcw11n9HRqrFztWpbmfwoL?mode=gi_t" target="_blank">
+        <div class="social-btn-icon">👥</div>
+        <div class="social-btn-info">
+          <div class="social-btn-title" data-i18n="grp-title">Join Our Group</div>
+          <div class="social-btn-desc" data-i18n="grp-desc">UNITY-MD Community • Support & Updates</div>
+        </div>
+        <div class="social-btn-arrow">→</div>
+      </a>
+      <a class="social-btn channel" href="https://whatsapp.com/channel/0029Vb6UYsDCxoArqy6JsX0l" target="_blank">
+        <div class="social-btn-icon">📢</div>
+        <div class="social-btn-info">
+          <div class="social-btn-title" data-i18n="ch-title">Follow Our Channel</div>
+          <div class="social-btn-desc" data-i18n="ch-desc">Latest news, features & announcements</div>
+        </div>
+        <div class="social-btn-arrow">→</div>
+      </a>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div data-i18n-html="footer-main">Powered by <a href="#">UNITY-MD</a> &nbsp;•&nbsp; ® TEAM ASTRAL CORE Sri Lanka 🇱🇰</div>
+    <div style="margin-top:6px;opacity:.5" data-i18n="footer-sub">660+ commands &nbsp;•&nbsp; 99,999+ bots supported</div>
+    <div class="footer-dots">
+      <div class="fdot"></div><div class="fdot"></div><div class="fdot"></div>
+      <div class="fdot"></div><div class="fdot"></div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<!-- SETTINGS MODAL -->
+<div id="settings-overlay" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(2,4,8,0.94);backdrop-filter:blur(16px);overflow-y:auto;padding:24px 16px">
+  <div style="max-width:560px;margin:0 auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
+      <div>
+        <div style="font-family:'Orbitron',monospace;font-size:1.1rem;font-weight:900;letter-spacing:2px;color:var(--g1)" data-i18n="settings-title">⚙️ BOT SETTINGS</div>
+        <div id="cfg-num" style="font-size:.72rem;color:var(--sub);font-family:'JetBrains Mono',monospace;margin-top:3px"></div>
+      </div>
+      <button onclick="closeSettings()" style="background:rgba(255,71,87,0.08);border:1px solid rgba(255,71,87,0.2);color:var(--red);border-radius:10px;padding:8px 16px;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.85rem" data-i18n="settings-close">✕ Close</button>
+    </div>
+    <div id="save-bar" style="display:none;position:sticky;top:0;z-index:10;background:rgba(37,211,102,0.06);border:1px solid rgba(37,211,102,0.25);border-radius:14px;padding:12px 18px;margin-bottom:18px;align-items:center;justify-content:space-between;gap:12px">
+      <span style="font-size:.82rem;color:var(--g1)" data-i18n="settings-unsaved">⚠️ Unsaved changes — bot will restart after save</span>
+      <button id="save-btn" onclick="saveSettings()" style="background:linear-gradient(135deg,var(--g1),#00c853);color:#fff;border:none;border-radius:10px;padding:9px 22px;font-weight:700;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:.85rem;white-space:nowrap" data-i18n="settings-save">💾 Save & Restart</button>
+    </div>
+    <div id="cfg-loading" style="text-align:center;padding:60px;color:var(--sub);font-family:'JetBrains Mono',monospace;font-size:.85rem" data-i18n="cfg-loading">Loading settings...</div>
+    <div id="cfg-body" style="display:none">
+      <div style="background:rgba(6,10,20,0.9);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:14px">
+        <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:3px;color:var(--sub);margin-bottom:14px;font-family:'JetBrains Mono',monospace" data-i18n="cfg-bot-mode">🤖 Bot Mode</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="mode-btn" data-mode="public"  onclick="setMode('public')"  data-i18n="mode-public">🌐 Public</button>
+          <button class="mode-btn" data-mode="group"   onclick="setMode('group')"   data-i18n="mode-group">👥 Group Only</button>
+          <button class="mode-btn" data-mode="inbox"   onclick="setMode('inbox')"   data-i18n="mode-inbox">📩 Inbox Only</button>
+          <button class="mode-btn" data-mode="private" onclick="setMode('private')" data-i18n="mode-private">🔒 Private</button>
+        </div>
+      </div>
+      <div style="background:rgba(6,10,20,0.9);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:14px">
+        <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:3px;color:var(--sub);margin-bottom:14px;font-family:'JetBrains Mono',monospace" data-i18n="cfg-auto-feat">⚡ Auto Features</div>
+        <div id="features-list"></div>
+      </div>
+      <div id="cmd-groups"></div>
+    </div>
+    <div id="cfg-error" style="display:none;text-align:center;padding:40px;color:var(--red);font-size:.85rem"></div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+let curNum = null, pollInt = null, timerInt = null;
+
+/* ─── STATS ─── */
+async function loadStats() {
+  try {
+    const r = await fetch('/api/pair/stats');
+    if (!r.ok) return;
+    const d = await r.json();
+    animCount('cnt-on', d.connected ?? 0);
+    animCount('cnt-usr', d.users ?? 0);
+    animCount('cnt-grp', d.groups ?? 0);
+  } catch {}
+}
+function animCount(id, target) {
+  const el = document.getElementById(id);
+  const start = parseInt(el.textContent) || 0;
+  const diff = target - start, steps = 25; let i = 0;
+  const t = setInterval(() => { i++; el.textContent = Math.round(start + diff*(i/steps)); if(i>=steps) clearInterval(t); }, 30);
+}
+loadStats();
+var _statsPollMs = (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) ? 45000 : 15000;
+setInterval(loadStats, _statsPollMs);
+
+/* ─── SOCKET ─── */
+socket.on('session_update', ({userId, status, pairCode}) => {
+  if (userId !== curNum) return;
+  if (status === 'connected') showSuccess(userId);
+  else if (status === 'error') { showErr('Session error. Please try again.'); setBusy(false); }
+  else if (pairCode) showCode(pairCode);
+  updateBadge(status);
+});
+
+/* ─── COUNTRY CODE SELECTOR ─── */
+const COUNTRIES=[{f:'🇱🇰',n:'Sri Lanka',c:'94'},{f:'🇮🇳',n:'India',c:'91'},{f:'🇵🇰',n:'Pakistan',c:'92'},{f:'🇧🇩',n:'Bangladesh',c:'880'},{f:'🇲🇻',n:'Maldives',c:'960'},{f:'🇺🇸',n:'United States',c:'1'},{f:'🇬🇧',n:'United Kingdom',c:'44'},{f:'🇦🇺',n:'Australia',c:'61'},{f:'🇨🇦',n:'Canada',c:'1'},{f:'🇩🇪',n:'Germany',c:'49'},{f:'🇫🇷',n:'France',c:'33'},{f:'🇮🇹',n:'Italy',c:'39'},{f:'🇪🇸',n:'Spain',c:'34'},{f:'🇳🇱',n:'Netherlands',c:'31'},{f:'🇧🇷',n:'Brazil',c:'55'},{f:'🇲🇽',n:'Mexico',c:'52'},{f:'🇦🇷',n:'Argentina',c:'54'},{f:'🇿🇦',n:'South Africa',c:'27'},{f:'🇳🇬',n:'Nigeria',c:'234'},{f:'🇰🇪',n:'Kenya',c:'254'},{f:'🇸🇦',n:'Saudi Arabia',c:'966'},{f:'🇦🇪',n:'UAE',c:'971'},{f:'🇶🇦',n:'Qatar',c:'974'},{f:'🇰🇼',n:'Kuwait',c:'965'},{f:'🇴🇲',n:'Oman',c:'968'},{f:'🇧🇭',n:'Bahrain',c:'973'},{f:'🇮🇶',n:'Iraq',c:'964'},{f:'🇯🇴',n:'Jordan',c:'962'},{f:'🇱🇧',n:'Lebanon',c:'961'},{f:'🇪🇬',n:'Egypt',c:'20'},{f:'🇲🇾',n:'Malaysia',c:'60'},{f:'🇸🇬',n:'Singapore',c:'65'},{f:'🇵🇭',n:'Philippines',c:'63'},{f:'🇮🇩',n:'Indonesia',c:'62'},{f:'🇹🇭',n:'Thailand',c:'66'},{f:'🇻🇳',n:'Vietnam',c:'84'},{f:'🇷🇺',n:'Russia',c:'7'},{f:'🇵🇱',n:'Poland',c:'48'},{f:'🇹🇷',n:'Turkey',c:'90'},{f:'🇷🇴',n:'Romania',c:'40'},{f:'🇺🇦',n:'Ukraine',c:'380'},{f:'🇸🇪',n:'Sweden',c:'46'},{f:'🇳🇴',n:'Norway',c:'47'},{f:'🇩🇰',n:'Denmark',c:'45'},{f:'🇫🇮',n:'Finland',c:'358'},{f:'🇨🇭',n:'Switzerland',c:'41'},{f:'🇦🇹',n:'Austria',c:'43'},{f:'🇧🇪',n:'Belgium',c:'32'},{f:'🇵🇹',n:'Portugal',c:'351'},{f:'🇬🇷',n:'Greece',c:'30'},{f:'🇯🇵',n:'Japan',c:'81'},{f:'🇰🇷',n:'South Korea',c:'82'},{f:'🇨🇳',n:'China',c:'86'},{f:'🇭🇰',n:'Hong Kong',c:'852'},{f:'🇹🇼',n:'Taiwan',c:'886'},{f:'🇳🇿',n:'New Zealand',c:'64'},{f:'🇮🇷',n:'Iran',c:'98'},{f:'🇦🇫',n:'Afghanistan',c:'93'},{f:'🇳🇵',n:'Nepal',c:'977'},{f:'🇲🇲',n:'Myanmar',c:'95'},{f:'🇲🇦',n:'Morocco',c:'212'},{f:'🇩🇿',n:'Algeria',c:'213'},{f:'🇿🇼',n:'Zimbabwe',c:'263'},{f:'🇬🇭',n:'Ghana',c:'233'}];
+let selectedCC=COUNTRIES[0];
+function buildCCList(q){const list=document.getElementById('ccList');const filtered=q?COUNTRIES.filter(c=>c.n.toLowerCase().includes(q.toLowerCase())||c.c.includes(q)):COUNTRIES;list.innerHTML=filtered.map(c=>`<div class="cc-item${c===selectedCC?' selected':''}" onclick="selectCC(${COUNTRIES.indexOf(c)})"><span class="cc-item-flag">${c.f}</span><span class="cc-item-name">${c.n}</span><span class="cc-item-code">+${c.c}</span></div>`).join('');}
+function toggleCC(){const btn=document.getElementById('ccBtn'),dd=document.getElementById('ccDropdown');const open=dd.classList.toggle('open');btn.classList.toggle('open',open);if(open){document.getElementById('ccSearch').value='';document.getElementById('ccSearch').focus();buildCCList('');}}
+function filterCC(q){buildCCList(q);}
+function selectCC(idx){selectedCC=COUNTRIES[idx];document.getElementById('ccFlag').textContent=selectedCC.f;document.getElementById('ccCode').textContent='+'+selectedCC.c;document.getElementById('ccDropdown').classList.remove('open');document.getElementById('ccBtn').classList.remove('open');updatePreview();}
+document.addEventListener('click',e=>{const w=document.getElementById('ccWrap');if(w&&!w.contains(e.target)){document.getElementById('ccDropdown').classList.remove('open');document.getElementById('ccBtn').classList.remove('open');}});
+function updatePreview(){const local=(document.getElementById('numIn').value||'').replace(/\s/g,'');document.getElementById('previewNum').textContent=local?'+'+selectedCC.c+local:'+'+selectedCC.c+'…';}
+function buildFullPhone(){return selectedCC.c+(document.getElementById('numIn').value||'').replace(/[\s\-]/g,'').replace(/^0+/,'');}
+document.getElementById('numIn').addEventListener('input',updatePreview);
+
+/* ─── VISITOR INFO ─── */
+(function(){
+  // ── Sync / instant fields ──
+  var ua = navigator.userAgent;
+
+  // Platform
+  var plat = 'Unknown';
+  if (/Android/i.test(ua)) plat = 'Android 📱';
+  else if (/iPhone|iPad|iPod/i.test(ua)) plat = 'iOS 📱';
+  else if (/Windows NT/i.test(ua)) plat = 'Windows 🖥️';
+  else if (/Macintosh|Mac OS X/i.test(ua)) plat = 'macOS 💻';
+  else if (/Linux/i.test(ua)) plat = 'Linux 🐧';
+  set('vi-plat', plat);
+
+  // Browser
+  var br = 'Unknown';
+  if (/Edg\//i.test(ua)) br = 'Edge';
+  else if (/OPR|Opera/i.test(ua)) br = 'Opera';
+  else if (/Chrome/i.test(ua)) br = 'Chrome';
+  else if (/Firefox/i.test(ua)) br = 'Firefox';
+  else if (/Safari/i.test(ua)) br = 'Safari';
+  else if (/MSIE|Trident/i.test(ua)) br = 'IE';
+  set('vi-browser', br);
+
+  // Screen
+  set('vi-scr', screen.width + '×' + screen.height + ' (' + (window.devicePixelRatio||1) + 'x)');
+
+  // Language
+  set('vi-lang', navigator.language || navigator.userLanguage || 'Unknown');
+
+  // Timezone
+  try { set('vi-tz', Intl.DateTimeFormat().resolvedOptions().timeZone); } catch(e) { set('vi-tz','Unknown'); }
+
+  // CPU cores
+  set('vi-cpu', (navigator.hardwareConcurrency || 'N/A') + (navigator.hardwareConcurrency ? ' cores' : ''));
+
+  // RAM
+  set('vi-ram', navigator.deviceMemory ? navigator.deviceMemory + ' GB' : 'N/A');
+
+  // Touch
+  var tp = navigator.maxTouchPoints || 0;
+  set('vi-touch', tp > 0 ? tp + ' points ✅' : 'None ❌');
+
+  // Online
+  set('vi-online', navigator.onLine ? '🟢 Online' : '🔴 Offline');
+  window.addEventListener('online',  function(){ set('vi-online','🟢 Online'); });
+  window.addEventListener('offline', function(){ set('vi-online','🔴 Offline'); });
+
+  // Live clock
+  function tickClock(){
+    var now = new Date();
+    set('vi-time', now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+  }
+  tickClock(); setInterval(tickClock, 1000);
+
+  // ── Network ──
+  var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (conn) {
+    function updateNet(){
+      var tm = {'4g':'4G LTE','3g':'3G','2g':'2G','slow-2g':'2G Slow','wifi':'WiFi','ethernet':'Ethernet'};
+      var t = conn.effectiveType || conn.type || '';
+      var label = tm[t] || (t ? t.toUpperCase() : 'Online');
+      if (conn.downlink) label += ' · ' + conn.downlink + ' Mbps';
+      set('vi-net', label);
+      var bars = {'4g':5,'3g':3,'2g':2,'slow-2g':1,'wifi':5,'ethernet':5};
+      var ab = bars[t] || (navigator.onLine ? 4 : 0);
+      document.querySelectorAll('.sdot-b').forEach(function(b,i){ b.classList.toggle('on', i < ab); });
+    }
+    updateNet();
+    conn.addEventListener('change', updateNet);
+  } else {
+    set('vi-net', navigator.onLine ? 'Online' : 'Offline');
+    if (navigator.onLine) document.querySelectorAll('.sdot-b').forEach(function(b){ b.classList.add('on'); });
+  }
+
+  // ── Battery ──
+  if (navigator.getBattery) {
+    navigator.getBattery().then(function(b){
+      function upd(){
+        var pct = Math.round(b.level * 100);
+        set('vi-batt', pct + '%');
+        var fill = document.getElementById('vi-bfill');
+        if (fill) { fill.style.width = pct + '%'; fill.style.background = pct>60?'var(--g1)':pct>25?'var(--amber)':'var(--red)'; }
+        var st = document.getElementById('vi-bst');
+        if (st) {
+          if (b.charging) { st.textContent = '⚡ Charging'; st.className = 'batt-status-txt charging'; }
+          else { var m = Math.round(b.dischargingTime/60); st.textContent = isFinite(m) ? '~'+m+'min left' : 'Discharging'; st.className = 'batt-status-txt'; }
+        }
+      }
+      upd();
+      b.addEventListener('levelchange', upd);
+      b.addEventListener('chargingchange', upd);
+    }).catch(function(){ set('vi-batt','N/A'); });
+  } else {
+    set('vi-batt', 'N/A');
+    var f = document.getElementById('vi-bfill');
+    if (f) { f.style.width='100%'; f.style.background='rgba(74,82,128,0.3)'; }
+    var bs = document.getElementById('vi-bst');
+    if (bs) { bs.textContent = 'Not supported'; }
+  }
+
+  // ── IP + ISP + Country (multiple fallback APIs) ──
+  function tryIP(apis, idx) {
+    if (idx >= apis.length) { set('vi-ip','Unavailable'); set('vi-isp','Unavailable'); return; }
+    fetch(apis[idx].url)
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var ip  = apis[idx].ip(d);
+        var isp = apis[idx].isp(d);
+        var country = apis[idx].country(d);
+        var city    = apis[idx].city ? apis[idx].city(d) : '';
+        if (!ip) throw new Error('no ip');
+        set('vi-ip', ip);
+        set('vi-isp', isp || 'Unknown');
+        var ctry = document.getElementById('vi-ctry');
+        if (ctry && country) ctry.innerHTML = (city ? '📍 '+city+'<br>' : '') + '🌍 ' + country;
+      })
+      .catch(function(){ tryIP(apis, idx+1); });
+  }
+
+  var APIs = [
+    {
+      url: 'https://ipwho.is/',
+      ip:      function(d){ return d.ip; },
+      isp:     function(d){ return d.connection && (d.connection.isp || d.connection.org); },
+      country: function(d){ return d.country; },
+      city:    function(d){ return d.city; }
+    },
+    {
+      url: 'https://ip-api.com/json/?fields=query,isp,org,country,city',
+      ip:      function(d){ return d.query; },
+      isp:     function(d){ return d.isp || d.org; },
+      country: function(d){ return d.country; },
+      city:    function(d){ return d.city; }
+    },
+    {
+      url: 'https://api.ipify.org?format=json',
+      ip:      function(d){ return d.ip; },
+      isp:     function(){ return null; },
+      country: function(){ return null; }
+    }
+  ];
+  tryIP(APIs, 0);
+
+  // helper
+  function set(id, val){
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = val;
+    el.classList.remove('loading');
+  }
+})();
+
+/* ─── PAIR ─── */
+async function startPair() {
+  const num = buildFullPhone();
+  const localPart = num.replace(selectedCC.c,'');
+  if (localPart.length < 5) { showErr('Enter a valid local phone number'); return; }
+  curNum = num; hideErr(); setBusy(true);
+  try {
+    const r = await fetch('/api/pair', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({number: num})
+    });
+    const d = await r.json();
+    if (!d.ok) {
+      if (d.blocked || r.status === 403) { showBlocked(); setBusy(false); return; }
+      showErr(d.error || 'Failed. Try again.'); setBusy(false); return;
+    }
+    if (d.status === 'already_connected') showSuccess(num);
+    else if (d.pairCode) { showCode(d.pairCode); startPoll(num); }
+    else showErr('Could not get pair code. Try again.');
+  } catch(e) { showErr('Network error. Try again.'); }
+  setBusy(false);
+}
+function startPoll(num) {
+  if (pollInt) clearInterval(pollInt);
+  pollInt = setInterval(async () => {
+    try {
+      const r = await fetch('/api/pair/status/' + num);
+      const d = await r.json();
+      if (d.status === 'connected') { clearInterval(pollInt); showSuccess(num); }
+      else if (d.pairCode && d.pairCode !== getCurrentCode()) showCode(d.pairCode);
+      updateBadge(d.status);
+    } catch {}
+  }, 3000);
+}
+function getCurrentCode() {
+  return ['d0','d1','d2','d3','d4','d5','d6','d7'].map(id => document.getElementById(id)?.textContent || '').join('');
+}
+function copyCode() {
+  const code = getCurrentCode().replace(/-/g,'');
+  if (!code || code.length < 8) return;
+  const formatted = code.slice(0,4) + '-' + code.slice(4);
+  navigator.clipboard.writeText(formatted).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '✅ Copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '📋 Copy Code'; btn.classList.remove('copied'); }, 2000);
+  }).catch(() => {
+    const ta = document.createElement('textarea'); ta.value = formatted;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    const btn = document.getElementById('copy-btn'); btn.textContent = '✅ Copied!';
+    setTimeout(() => { btn.textContent = '📋 Copy Code'; }, 2000);
+  });
+}
+let codeExpiry = 0;
+function showCode(code) {
+  document.getElementById('code-box').classList.add('show');
+  document.getElementById('steps').style.display = 'none';
+  const chars = code.replace(/[^A-Z0-9]/gi,'').split('');
+  for (let i=0;i<8;i++) { const el=document.getElementById('d'+i); if(el) el.textContent=chars[i]||'-'; }
+  codeExpiry = Date.now() + 115000;
+  if (timerInt) clearInterval(timerInt);
+  timerInt = setInterval(() => {
+    const left = Math.max(0, Math.ceil((codeExpiry-Date.now())/1000));
+    document.getElementById('code-timer').textContent = left > 0 ? `⏱ Code expires in ${left}s` : '⏰ Code expired — refreshing...';
+    if (left === 0) clearInterval(timerInt);
+  }, 1000);
+}
+function showSuccess(num) {
+  if (pollInt) clearInterval(pollInt); if (timerInt) clearInterval(timerInt);
+  document.getElementById('code-box').classList.remove('show');
+  document.getElementById('form-wrap').style.display = 'none';
+  document.getElementById('steps').style.display = 'none';
+  document.getElementById('blk-msg').classList.remove('show');
+  document.getElementById('success-box').classList.add('show');
+  document.getElementById('success-num').textContent = '+' + num;
+  loadStats();
+}
+function showBlocked() {
+  document.getElementById('form-wrap').style.display = 'none';
+  document.getElementById('steps').style.display = 'none';
+  document.getElementById('code-box').classList.remove('show');
+  document.getElementById('blk-msg').classList.add('show');
+  updateBadge('error');
+}
+function updateBadge(status) {
+  const b=document.getElementById('status-badge'), t=document.getElementById('status-txt');
+  const m={pairing:['sb-pair','Waiting for scan...'],connecting:['sb-conn','Connecting...'],connected:['sb-ok','Connected ✅'],error:['sb-err','Error — try again']};
+  const [cls,lbl]=m[status]||['sb-conn',status]; b.className='sbadge '+cls; t.textContent=lbl;
+}
+function showErr(m){const e=document.getElementById('err-msg');e.textContent=m;e.classList.add('show')}
+function hideErr(){document.getElementById('err-msg').classList.remove('show')}
+function setBusy(on){const b=document.getElementById('pairBtn');b.disabled=on;b.textContent=on?'⏳...':'Get Code'}
+function resetForm(){
+  curNum=null; if(pollInt)clearInterval(pollInt); if(timerInt)clearInterval(timerInt);
+  document.getElementById('success-box').classList.remove('show');
+  document.getElementById('code-box').classList.remove('show');
+  document.getElementById('blk-msg').classList.remove('show');
+  document.getElementById('form-wrap').style.display='';
+  document.getElementById('steps').style.display='';
+  document.getElementById('numIn').value=''; updatePreview(); hideErr();
+}
+document.getElementById('numIn').addEventListener('keydown', e => { if(e.key==='Enter') startPair(); });
+
+/* ─── SETTINGS ─── */
+let cfgData=null,cfgChanges={},cfgNum=null;
+function openSettings(){
+  cfgNum=curNum; cfgChanges={commands:{},features:{},mode:null};
+  document.getElementById('settings-overlay').style.display='block';
+  document.getElementById('cfg-num').textContent='+'+cfgNum;
+  document.getElementById('cfg-loading').style.display='block';
+  document.getElementById('cfg-body').style.display='none';
+  document.getElementById('cfg-error').style.display='none';
+  document.getElementById('save-bar').style.display='none';
+  loadCfg();
+}
+function closeSettings(){document.getElementById('settings-overlay').style.display='none'}
+async function loadCfg(){
+  try{
+    const r=await fetch('/api/pair/settings/'+cfgNum);
+    const d=await r.json();
+    if(!d.ok){
+      if(d.error==='PASSWORD_REQUIRED'){
+        // Show password input instead of error
+        showPairPasswordPrompt();
+        return;
+      }
+      throw new Error(d.error||'Failed to load');
+    }
+    cfgData=d; renderCfg();
+  }catch(e){
+    document.getElementById('cfg-loading').style.display='none';
+    const er=document.getElementById('cfg-error'); er.textContent='⚠️ '+e.message; er.style.display='block';
+  }
+}
+function showPairPasswordPrompt(){
+  const loadEl=document.getElementById('cfg-loading');
+  loadEl.style.display='block';
+  loadEl.innerHTML=`
+    <div style="max-width:320px;margin:0 auto;padding:24px 0">
+      <div style="font-size:1.1rem;font-weight:700;color:var(--g1);margin-bottom:6px">🔐 Verify Identity</div>
+      <div style="font-size:.82rem;color:var(--sub);margin-bottom:16px">An OTP will be sent to your bot's WhatsApp inbox.</div>
+      <button id="otp-send-btn" onclick="sendOtp()"
+        style="width:100%;padding:11px;background:linear-gradient(135deg,var(--g1),#00c853);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:.9rem;margin-bottom:12px">
+        📩 Send OTP to Bot Inbox
+      </button>
+      <div id="otp-input-wrap" style="display:none">
+        <input id="otp-input" type="text" maxlength="7" placeholder="Enter OTP (e.g. 123-456)"
+          style="width:100%;padding:10px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(0,255,136,0.2);border-radius:10px;color:#fff;font-family:'JetBrains Mono',monospace;font-size:1rem;outline:none;box-sizing:border-box;margin-bottom:10px;letter-spacing:3px;text-align:center"
+          oninput="this.value=this.value.toUpperCase()"
+          onkeydown="if(event.key==='Enter')verifyOtp()"
+        />
+        <button onclick="verifyOtp()"
+          style="width:100%;padding:11px;background:linear-gradient(135deg,var(--g1),#00c853);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:.9rem;margin-bottom:8px">
+          ✅ Verify OTP
+        </button>
+        <button onclick="sendOtp()" id="otp-resend-btn"
+          style="width:100%;padding:9px;background:transparent;border:1px solid rgba(0,255,136,0.25);color:var(--g1);border-radius:10px;font-weight:600;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:.82rem">
+          🔄 Resend OTP
+        </button>
+      </div>
+      <div id="otp-status" style="font-size:.82rem;margin-top:10px;text-align:center"></div>
+    </div>`;
+}
+async function sendOtp(){
+  const btn=document.getElementById('otp-send-btn');
+  const st=document.getElementById('otp-status');
+  if(btn){btn.disabled=true;btn.textContent='Sending...';}
+  st.style.color='var(--sub)'; st.textContent='Sending OTP to your bot inbox...';
+  try{
+    const r=await fetch('/api/pair/resend-password/'+cfgNum,{method:'POST'});
+    const d=await r.json();
+    if(!d.ok) throw new Error(d.error||'Failed to send OTP');
+    st.style.color='var(--g1)'; st.textContent='✅ OTP sent! Check your bot inbox.';
+    const wrap=document.getElementById('otp-input-wrap');
+    if(wrap){wrap.style.display='block'; document.getElementById('otp-input')?.focus();}
+    if(btn){btn.style.display='none';}
+  }catch(e){
+    st.style.color='#ff4757'; st.textContent='⚠️ '+e.message;
+    if(btn){btn.disabled=false;btn.textContent='📩 Send OTP to Bot Inbox';}
+  }
+}
+async function verifyOtp(){
+  const otp=(document.getElementById('otp-input')?.value||'').trim();
+  const st=document.getElementById('otp-status');
+  if(!otp){st.style.color='#ff4757';st.textContent='Please enter the OTP.';return;}
+  st.style.color='var(--sub)'; st.textContent='Verifying...';
+  try{
+    const r=await fetch('/api/pair/verify/'+cfgNum,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:otp})});
+    const d=await r.json();
+    if(!d.ok) throw new Error(d.error==='WRONG_PASSWORD'?'Incorrect OTP. Try again.':d.error||'Verification failed');
+    st.style.color='var(--g1)'; st.textContent='✅ Verified! Loading settings...';
+    setTimeout(()=>loadCfg(),600);
+  }catch(e){
+    st.style.color='#ff4757'; st.textContent='⚠️ '+e.message;
+  }
+}
+function markDirty(){document.getElementById('save-bar').style.display='flex'}
+function setMode(m){
+  cfgChanges.mode=m;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
+  markDirty();
+}
+function renderCfg(){
+  document.getElementById('cfg-loading').style.display='none';
+  document.getElementById('cfg-body').style.display='block';
+  const curMode=cfgData.mode||'public';
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===curMode));
+  const FEAT_LABELS={
+    autoRecording:['🎙 Auto Recording','Auto-record voice notes'],
+    autoOnline:['🟢 Always Online','Show online status always'],
+    autoStatusView:['👁 Auto Status View','Automatically view statuses'],
+    autoStatusReact:['❤️ Auto Status React','React to statuses automatically'],
+    autoRead:['✅ Auto Read','Mark messages as read instantly'],
+    autoTyping:['⌨️ Auto Typing','Show typing indicator'],
+    autoBio:['📝 Auto Bio','Rotate bio automatically'],
+    didYouMean:['💡 Did You Mean','Suggest command corrections'],
+    antiCall:['🚫 Anti Call','Block incoming calls'],
+  };
+  const fl=document.getElementById('features-list'); fl.innerHTML='';
+  const feats=cfgData.features||{};
+  for(const[key,[label,desc]] of Object.entries(FEAT_LABELS)){
+    const checked=!!feats[key],id='feat-'+key,row=document.createElement('div');
+    row.className='feat-row';
+    row.innerHTML=`<div><div class="feat-lbl">${label}</div><div class="feat-desc">${desc}</div></div><label class="tog"><input type="checkbox" id="${id}" ${checked?'checked':''} onchange="onFeatChange('${key}',this.checked)"><span class="tog-sl"></span></label>`;
+    fl.appendChild(row);
+  }
+  const cg=document.getElementById('cmd-groups'); cg.innerHTML='';
+  for(const[cat,cmds] of Object.entries(cfgData.groups||{})){
+    if(!cmds.length) continue;
+    const onCount=cmds.filter(c=>c.enabled).length,card=document.createElement('div');
+    card.className='cmd-group-card';
+    const safecat=cat.replace(/[^a-zA-Z0-9]/g,'_');
+    card.innerHTML=`<div class="cmd-group-hdr" onclick="toggleCat('${safecat}')"><div><div class="cmd-group-hdr-title">${cat}</div><div class="cmd-group-hdr-meta">${onCount}/${cmds.length} enabled</div></div><div class="cat-tog-row"><button class="cat-tog-btn cat-on" onclick="event.stopPropagation();catAll('${safecat}',true)">All On</button><button class="cat-tog-btn cat-off" onclick="event.stopPropagation();catAll('${safecat}',false)">All Off</button><span style="color:var(--sub);font-size:.75rem;margin-left:4px" id="arr-${safecat}">▼</span></div></div><div class="cmd-group-body" id="body-${safecat}">${cmds.map(c=>`<div class="cmd-row" id="row-${c.cmd}"><div class="cmd-name">.${c.cmd}</div><label class="tog"><input type="checkbox" id="cmd-${c.cmd}" ${c.enabled?'checked':''} onchange="onCmdChange('${c.cmd}',this.checked,'${safecat}',${cmds.length})"><span class="tog-sl"></span></label></div>`).join('')}</div>`;
+    cg.appendChild(card);
+  }
+}
+function toggleCat(s){const b=document.getElementById('body-'+s),a=document.getElementById('arr-'+s),o=b.classList.toggle('open');a.textContent=o?'▲':'▼'}
+function onFeatChange(key,val){cfgChanges.features[key]=val;markDirty()}
+function onCmdChange(cmd,val,safecat,total){
+  cfgChanges.commands[cmd]=val;
+  const body=document.getElementById('body-'+safecat);
+  if(body){const checks=body.querySelectorAll('input[type=checkbox]'),onN=[...checks].filter(c=>c.checked).length,hdr=body.previousElementSibling?.querySelector('.cmd-group-hdr-meta');if(hdr)hdr.textContent=`${onN}/${total} enabled`;}
+  markDirty();
+}
+function catAll(safecat,val){
+  const body=document.getElementById('body-'+safecat); if(!body) return;
+  const checks=body.querySelectorAll('input[type=checkbox]');
+  checks.forEach(c=>{const cmd=c.id.replace('cmd-','');c.checked=val;cfgChanges.commands[cmd]=val;});
+  const hdr=body.previousElementSibling?.querySelector('.cmd-group-hdr-meta');
+  if(hdr)hdr.textContent=`${val?checks.length:0}/${checks.length} enabled`;
+  markDirty();
+}
+async function saveSettings(){
+  const btn=document.getElementById('save-btn'); btn.disabled=true; btn.textContent='⏳ Saving...';
+  try{
+    const body={commands:cfgChanges.commands,features:cfgChanges.features};
+    if(cfgChanges.mode) body.mode=cfgChanges.mode;
+    const r=await fetch('/api/pair/settings/'+cfgNum,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json(); if(!d.ok) throw new Error(d.error||'Save failed');
+    btn.textContent='✅ Saved! Restarting...';
+    setTimeout(()=>{document.getElementById('save-bar').style.display='none';btn.disabled=false;btn.textContent='💾 Save & Restart';cfgChanges={commands:{},features:{},mode:null};setTimeout(loadCfg,4000);},2500);
+  }catch(e){btn.textContent='⚠️ '+e.message;setTimeout(()=>{btn.disabled=false;btn.textContent='💾 Save & Restart';},3000);}
+}
+
+/* ─── AUDIO ─── */
+(function(){
+  var audio=document.getElementById('bg-audio'),overlay=document.getElementById('play-overlay'),btn=document.getElementById('music-btn'),isPlaying=false;
+  audio.volume=0.5;
+  audio.muted=true;
+  audio.play().then(function(){
+    audio.muted=false; isPlaying=true;
+    overlay.style.display='none'; btn.style.display='flex';
+  }).catch(function(){ overlay.style.display='flex'; });
+  window.startAudio=function(){
+    audio.muted=false;
+    audio.play().then(function(){ isPlaying=true; overlay.style.display='none'; btn.style.display='flex'; });
+  };
+  window.toggleAudio=function(){
+    if(isPlaying){ audio.pause(); isPlaying=false; btn.querySelector('.bars').classList.add('paused-bars'); btn.style.borderColor='rgba(255,255,255,0.1)'; }
+    else{ audio.play(); isPlaying=true; btn.querySelector('.bars').classList.remove('paused-bars'); btn.style.borderColor='rgba(37,211,102,0.25)'; }
+    btn.style.transform='scale(0.85)'; setTimeout(function(){btn.style.transform='scale(1)';},150);
+  };
+})();
+
+/* ─── TYPEWRITER ─── */
+(function(){
+  var ALL_MESSAGES={
+    en:[
+      {text:'🤖 AI-powered WhatsApp bot with 660+ commands!', style:'green'},
+      {text:'⚡ Fastest pairing — no QR scan, no hassle!', style:'cyan'},
+      {text:'🛡️ Anti-spam, anti-raid & full group protection built-in.', style:'purple'},
+      {text:'🎵 Download YouTube, TikTok & Instagram media instantly.', style:'yellow'},
+      {text:'🇱🇰 Built with ❤️ by 𝗧𝗘𝗔𝗠 𝗔𝗦𝗧𝗥𝗔𝗟 𝗖𝗢𝗥𝗘, Sri Lanka.', style:'red'},
+      {text:'💬 Gemini Pro AI — smarter conversations every day!', style:'cyan'},
+      {text:'🔗 Connect once. Bot stays online 24/7 ♾️', style:'green'},
+      {text:'👥 Join 99,999+ bots already powered by UNITY-MD!', style:'white'},
+    ],
+    si:[
+      {text:'🤖 AI-ශක්තිමත් WhatsApp බොට් එකක් - 660+ විධාන!', style:'green'},
+      {text:'⚡ ඉක්මන්ම ගැළපීම — QR ස්කෑන් නැත, කරදර නැත!', style:'cyan'},
+      {text:'🛡️ ස්පෑම් විරෝධී, රේඩ් විරෝධී සහ සම්පූර්ණ කණ්ඩායම් ආරක්ෂාව.', style:'purple'},
+      {text:'🎵 YouTube, TikTok සහ Instagram මාධ්‍ය ක්ෂණිකව බාගන්න.', style:'yellow'},
+      {text:'🇱🇰 𝗧𝗘𝗔𝗠 𝗔𝗦𝗧𝗥𝗔𝗟 𝗖𝗢𝗥𝗘, ශ්‍රී ලංකාව විසින් ❤️ සමඟ නිර්මිතයි.', style:'red'},
+      {text:'💬 Gemini Pro AI — දිනෙන් දිනම ස්මාර්ට් සංවාද!', style:'cyan'},
+      {text:'🔗 වරක් සම්බන්ධ කරන්න. බොට් 24/7 ♾️ සෙල්ලම් කරයි', style:'green'},
+      {text:'👥 UNITY-MD වලින් 99,999+ බොට් දැනටමත් ක්‍රියාත්මකයි!', style:'white'},
+    ],
+    ta:[
+      {text:'🤖 AI-இயக்கப்படும் WhatsApp போட் - 660+ கட்டளைகள்!', style:'green'},
+      {text:'⚡ வேகமான இணைப்பு — QR ஸ்கேன் இல்லை, தொந்தரவில்லை!', style:'cyan'},
+      {text:'🛡️ ஸ்பாம் எதிர்ப்பு, ரெய்ட் எதிர்ப்பு மற்றும் முழு குழு பாதுகாப்பு.', style:'purple'},
+      {text:'🎵 YouTube, TikTok மற்றும் Instagram மீடியா உடனடியாக பதிவிறக்கவும்.', style:'yellow'},
+      {text:'🇱🇰 UNITY குழுவால் ❤️ உடன் இலங்கையில் கட்டமைக்கப்பட்டது.', style:'red'},
+      {text:'💬 Gemini Pro AI — தினமும் புத்திசாலி உரையாடல்கள்!', style:'cyan'},
+      {text:'🔗 ஒரு முறை இணைக்கவும். போட் 24/7 ♾️ இயங்கும்', style:'green'},
+      {text:'👥 UNITY-MD ஆல் ஏற்கனவே 99,999+ போட்கள் இயக்கப்படுகின்றன!', style:'white'},
+    ],
+  };
+  var messages=ALL_MESSAGES['en'];
+  var box=document.getElementById('tw-box'), textEl=document.getElementById('tw-text');
+  if(!box||!textEl) return;
+  var mi=0,ci=0,deleting=false,pausing=false;
+  var cursor=document.createElement('span');
+  cursor.className='tw-cursor'; cursor.id='tw-cursor';
+
+  function setCursorColor(style){
+    var colors={green:'var(--g1)',cyan:'var(--g2)',purple:'var(--g3)',yellow:'var(--g5)',red:'var(--g4)',white:'var(--text)'};
+    cursor.style.background=colors[style]||'var(--g1)';
+  }
+
+  function render(txt,style){
+    textEl.innerHTML='';
+    var t=document.createTextNode(txt);
+    textEl.appendChild(t); textEl.appendChild(cursor);
+    box.className='tw-box style-'+style;
+    setCursorColor(style);
+  }
+
+  function type(){
+    if(pausing) return;
+    var msg=messages[mi],txt=msg.text,style=msg.style;
+    if(!deleting){
+      ci++;
+      render(txt.slice(0,ci),style);
+      if(ci>=txt.length){ pausing=true; setTimeout(function(){pausing=false;deleting=true;type();},2800); return; }
+    } else {
+      ci--;
+      render(txt.slice(0,ci),style);
+      if(ci<=0){ deleting=false; mi=(mi+1)%messages.length; setTimeout(function(){type();},400); return; }
+    }
+    setTimeout(type,deleting?22:55);
+  }
+  render('',messages[0].style);
+  setTimeout(type,1200);
+})();
+
+/* ─── CANVAS: Particles + Shooting Stars ─── */
+(function(){
+  // Mobile: CSS-only animation instead of canvas (zero JS CPU cost)
+  var isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ||
+                 window.innerWidth < 768;
+  if (isMobile) {
+    document.getElementById('bg-canvas').style.display = 'none';
+    var style = document.createElement('style');
+    style.textContent = `
+      body::before {
+        content:'';
+        position:fixed;inset:0;z-index:0;pointer-events:none;
+        background: radial-gradient(ellipse at 20% 50%, rgba(37,211,102,0.06) 0%, transparent 60%),
+                    radial-gradient(ellipse at 80% 20%, rgba(0,229,255,0.04) 0%, transparent 50%),
+                    radial-gradient(ellipse at 60% 80%, rgba(162,89,255,0.04) 0%, transparent 50%);
+        animation: bgPulse 8s ease-in-out infinite alternate;
+      }
+      @keyframes bgPulse {
+        0%   { opacity: 0.6; }
+        100% { opacity: 1; }
+      }
+    `;
+    document.head.appendChild(style);
+  } else {
+  var canvas=document.getElementById('bg-canvas'),ctx=canvas.getContext('2d');
+  var W,H,pts=[],stars=[];
+  var useShadow = true;
+
+  function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
+  resize(); window.addEventListener('resize',resize);
+
+  var colors=['#25d366','#00e5ff','#a259ff','#ffd93d','#ff6b6b'];
+
+  function Pt(){this.reset(true);}
+  Pt.prototype.reset=function(init){
+    this.x=Math.random()*W; this.y=init?Math.random()*H:H+5;
+    this.r=Math.random()*1.5+0.3;
+    this.vy=-(Math.random()*0.4+0.1); this.vx=(Math.random()-.5)*.2;
+    this.a=Math.random()*0.5+0.1;
+    this.c=colors[Math.floor(Math.random()*colors.length)];
+  };
+  Pt.prototype.step=function(){this.y+=this.vy;this.x+=this.vx;if(this.y<-5)this.reset(false);};
+  Pt.prototype.draw=function(){
+    ctx.save();ctx.globalAlpha=this.a;ctx.fillStyle=this.c;
+    ctx.shadowColor=this.c;ctx.shadowBlur=12;
+    ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.fill();ctx.restore();
+  };
+
+  function Star(){this.reset();}
+  Star.prototype.reset=function(){
+    this.x=Math.random()*W; this.y=Math.random()*H*.4;
+    this.len=Math.random()*90+50; this.speed=Math.random()*7+5;
+    this.angle=Math.PI/4+(Math.random()-.5)*.4;
+    this.a=0; this.active=false; this.delay=Math.random()*400; this.tick=0;
+  };
+  Star.prototype.step=function(){
+    this.tick++;
+    if(this.tick<this.delay) return;
+    if(!this.active){this.active=true;this.delay=0;this.tick=0;return;}
+    this.x+=Math.cos(this.angle)*this.speed; this.y+=Math.sin(this.angle)*this.speed;
+    this.a=Math.min(1,this.a+0.1);
+    if(this.x>W+100||this.y>H+100) this.reset();
+  };
+  Star.prototype.draw=function(){
+    if(!this.active||this.tick<this.delay) return;
+    ctx.save(); ctx.globalAlpha=this.a*0.6;
+    ctx.strokeStyle='#00e5ff'; ctx.shadowColor='#00e5ff'; ctx.shadowBlur=8; ctx.lineWidth=1.2;
+    ctx.beginPath();
+    ctx.moveTo(this.x,this.y);
+    ctx.lineTo(this.x-Math.cos(this.angle)*this.len,this.y-Math.sin(this.angle)*this.len);
+    ctx.stroke(); ctx.restore();
+  };
+
+  for(var i=0;i<80;i++) pts.push(new Pt());
+  for(var j=0;j<4;j++) stars.push(new Star());
+
+  (function loop(){
+    ctx.clearRect(0,0,W,H);
+    pts.forEach(function(p){p.step();p.draw();});
+    stars.forEach(function(s){s.step();s.draw();});
+    requestAnimationFrame(loop);
+  })();
+  } // end desktop-only block
+})();
+
+/* ═══════════════════════════════════════════════
+   LANGUAGE SYSTEM
+═══════════════════════════════════════════════ */
+var LANG = 'en';
+
+var T = {
+  en: {
+    'hero-sub': '® TEAM ASTRAL CORE • WhatsApp Bot Platform',
+    'stat-online': 'Online',
+    'stat-users': 'Users',
+    'stat-groups': 'Groups',
+    'feat-ai-name': 'AI Powered',
+    'feat-ai-val': 'Gemini Pro',
+    'feat-cmd-name': '660+ Commands',
+    'feat-cmd-val': 'All categories',
+    'feat-prot-name': 'Full Protection',
+    'feat-prot-val': 'Anti-spam & raid',
+    'feat-sl-name': 'Sri Lanka Built',
+    'feat-sl-val': 'Cinesubz & more',
+    'card-title': 'Connect Your WhatsApp',
+    'card-subtitle': 'No QR scan needed — instant pairing code',
+    'vinfo-head': '🖥️ Your Device Info',
+    'vinfo-ip': 'IP Address',
+    'vinfo-isp': 'ISP / Provider',
+    'vinfo-battery': 'Battery',
+    'vinfo-network': 'Network',
+    'vinfo-platform': 'Platform',
+    'vinfo-browser': 'Browser',
+    'vinfo-screen': 'Screen',
+    'vinfo-language': 'Language',
+    'vinfo-timezone': 'Timezone',
+    'vinfo-localtime': 'Local Time',
+    'vinfo-cpu': 'CPU Cores',
+    'vinfo-ram': 'Device RAM',
+    'vinfo-touch': 'Touch Points',
+    'vinfo-status': 'Status',
+    'cc-search-ph': 'Search country…',
+    'btn-pair': 'Get Code',
+    'blk-title': 'Number Blocked',
+    'blk-text': 'This number has been blocked by the admin.<br>Please contact support to unblock your number.',
+    'code-label': 'Your Pairing Code',
+    'copy-btn': '📋 Copy Code',
+    'code-hint': 'Open WhatsApp → <strong>Settings → Linked Devices</strong><br>→ <strong>Link a Device</strong> → Enter this code ✅',
+    'status-waiting': 'Waiting for scan...',
+    'success-title': 'Bot is Active!',
+    'success-msg': 'Send <strong style="color:var(--g1)">.menu</strong> on WhatsApp to get started.',
+    'btn-settings': '⚙️ Configure Bot Settings',
+    'btn-reset': 'Connect Another Number',
+    'step1': '<strong>Enter your number</strong> with country code (e.g. 94771234567)',
+    'step2': '<strong>Click Get Code</strong> and wait a few seconds',
+    'step3': 'Go to WhatsApp → <strong>Settings → Linked Devices → Link a Device</strong>',
+    'step4': '<strong>Enter the 8-digit code</strong> — your bot activates instantly ⚡',
+    'community-title': 'Connect With Us',
+    'team-label': '🧑‍💻 Our Team — Click to Chat',
+    'grp-title': 'Join Our Group',
+    'grp-desc': 'UNITY-MD Community • Support & Updates',
+    'ch-title': 'Follow Our Channel',
+    'ch-desc': 'Latest news, features & announcements',
+    'footer-main': 'Powered by <a href="#">UNITY-MD</a> &nbsp;•&nbsp; ® TEAM ASTRAL CORE Sri Lanka 🇱🇰',
+    'footer-sub': '660+ commands &nbsp;•&nbsp; 99,999+ bots supported',
+    'ov-sub': '® TEAM ASTRAL CORE • Sri Lanka 🇱🇰',
+    'ov-label': 'Tap to enter the experience',
+    'settings-title': '⚙️ BOT SETTINGS',
+    'settings-close': '✕ Close',
+    'settings-unsaved': '⚠️ Unsaved changes — bot will restart after save',
+    'settings-save': '💾 Save & Restart',
+    'cfg-loading': 'Loading settings...',
+    'cfg-bot-mode': '🤖 Bot Mode',
+    'cfg-auto-feat': '⚡ Auto Features',
+    'mode-public': '🌐 Public',
+    'mode-group': '👥 Group Only',
+    'mode-inbox': '📩 Inbox Only',
+    'mode-private': '🔒 Private',
+  },
+  si: {
+    'hero-sub': '® යූනිටි කණ්ඩායම • WhatsApp බොට් වේදිකාව',
+    'stat-online': 'සබැදි',
+    'stat-users': 'පරිශීලකයින්',
+    'stat-groups': 'කණ්ඩායම්',
+    'feat-ai-name': 'AI ශක්තිය',
+    'feat-ai-val': 'ජෙමිනි ප්‍රෝ',
+    'feat-cmd-name': '660+ විධාන',
+    'feat-cmd-val': 'සියලු කාණ්ඩ',
+    'feat-prot-name': 'සම්පූර්ණ ආරක්ෂාව',
+    'feat-prot-val': 'ස්පෑම් & රේඩ් විරෝධී',
+    'feat-sl-name': 'ලංකාවේ නිර්මිත',
+    'feat-sl-val': 'Cinesubz සහ තවත්',
+    'card-title': 'ඔබේ WhatsApp සම්බන්ධ කරන්න',
+    'card-subtitle': 'QR ස්කෑන් අවශ්‍ය නැත — ක්ෂණික ගැළපීම් කේතය',
+    'vinfo-head': '🖥️ ඔබේ උපාංගයේ තොරතුරු',
+    'vinfo-ip': 'IP ලිපිනය',
+    'vinfo-isp': 'ISP / සේවා සපයන්නා',
+    'vinfo-battery': 'බැටරිය',
+    'vinfo-network': 'ජාලය',
+    'vinfo-platform': 'වේදිකාව',
+    'vinfo-browser': 'බ්‍රව්සරය',
+    'vinfo-screen': 'තිරය',
+    'vinfo-language': 'භාෂාව',
+    'vinfo-timezone': 'වේලා කලාපය',
+    'vinfo-localtime': 'දේශීය වේලාව',
+    'vinfo-cpu': 'CPU කෝර්',
+    'vinfo-ram': 'උපාංග RAM',
+    'vinfo-touch': 'ස්පර්ශ ලකුණු',
+    'vinfo-status': 'තත්ත්වය',
+    'cc-search-ph': 'රට සොයන්න…',
+    'btn-pair': 'කේතය ලබාගන්න',
+    'blk-title': 'අංකය අවහිරයි',
+    'blk-text': 'මෙම අංකය පරිපාලක විසින් අවහිර කර ඇත.<br>ඔබේ අංකය නිදහස් කිරීමට සහාය සම්බන්ධ කරගන්න.',
+    'code-label': 'ඔබේ ගැළපීම් කේතය',
+    'copy-btn': '📋 කේතය පිටපත් කරන්න',
+    'code-hint': 'WhatsApp විවෘත කරන්න → <strong>සැකසීම් → සම්බන්ධිත උපාංග</strong><br>→ <strong>උපාංගයක් සම්බන්ධ කරන්න</strong> → මෙම කේතය ඇතුළු කරන්න ✅',
+    'status-waiting': 'ස්කෑන් කිරීම බලාපොරොත්තුවෙන්...',
+    'success-title': 'බොට් ක්‍රියාත්මකයි!',
+    'success-msg': 'ආරම්භ කිරීමට WhatsApp හි <strong style="color:var(--g1)">.menu</strong> යවන්න.',
+    'btn-settings': '⚙️ බොට් සැකසුම් වින්‍යාස කරන්න',
+    'btn-reset': 'තවත් අංකයක් සම්බන්ධ කරන්න',
+    'step1': '<strong>ඔබේ අංකය ඇතුළු කරන්න</strong> රට කේතය සමඟ (උදා: 94771234567)',
+    'step2': '<strong>කේතය ලබාගන්න ක්ලික් කරන්න</strong> සහ තත්පර කිහිපයක් රැඳෙන්න',
+    'step3': 'WhatsApp → <strong>සැකසීම් → සම්බන්ධිත උපාංග → උපාංගයක් සම්බන්ධ කරන්න</strong>',
+    'step4': '<strong>8-ඉලක්කම් කේතය ඇතුළු කරන්න</strong> — ඔබේ බොට් ක්ෂණිකව සක්‍රීය වෙයි ⚡',
+    'community-title': 'අප හා සම්බන්ධ වන්න',
+    'team-label': '🧑‍💻 අපේ කණ්ඩායම — කතා කිරීමට ක්ලික් කරන්න',
+    'grp-title': 'අපේ කණ්ඩායමට එකතු වන්න',
+    'grp-desc': 'UNITY-MD ප්‍රජාව • සහාය සහ යාවත්කාලීන',
+    'ch-title': 'අපේ නාලිකාව අනුගමනය කරන්න',
+    'ch-desc': 'නවතම ප්‍රවෘත්ති, විශේෂාංග සහ නිවේදන',
+    'footer-main': 'Powered by <a href="#">UNITY-MD</a> &nbsp;•&nbsp; ® Unity කණ්ඩායම ශ්‍රී ලංකාව 🇱🇰',
+    'footer-sub': '660+ විධාන &nbsp;•&nbsp; 99,999+ බොට් සහාය',
+    'ov-sub': '® යූනිටි කණ්ඩායම • ශ්‍රී ලංකාව 🇱🇰',
+    'ov-label': 'අත්දැකීමට ඇතුල් වීමට ස්පර්ශ කරන්න',
+    'settings-title': '⚙️ බොට් සැකසුම්',
+    'settings-close': '✕ වසන්න',
+    'settings-unsaved': '⚠️ සුරැකිලා නැති වෙනස්කම් — සුරැකීමෙන් පසු බොට් නැවත ආරම්භ වෙයි',
+    'settings-save': '💾 සුරකින්න සහ නැවත ආරම්භ කරන්න',
+    'cfg-loading': 'සැකසුම් පූරණය වෙමින්...',
+    'cfg-bot-mode': '🤖 බොට් ක්‍රම',
+    'cfg-auto-feat': '⚡ ස්වයං විශේෂාංග',
+    'mode-public': '🌐 පොදු',
+    'mode-group': '👥 කණ්ඩායම් පමණි',
+    'mode-inbox': '📩 ඉන්බොක්ස් පමණි',
+    'mode-private': '🔒 පෞද්ගලික',
+  },
+  ta: {
+    'hero-sub': '® யூனிட்டி குழு • WhatsApp போட் தளம்',
+    'stat-online': 'இணையத்தில்',
+    'stat-users': 'பயனர்கள்',
+    'stat-groups': 'குழுக்கள்',
+    'feat-ai-name': 'AI இயக்கம்',
+    'feat-ai-val': 'ஜெமினி ப்ரோ',
+    'feat-cmd-name': '660+ கட்டளைகள்',
+    'feat-cmd-val': 'அனைத்து வகைகள்',
+    'feat-prot-name': 'முழு பாதுகாப்பு',
+    'feat-prot-val': 'ஸ்பாம் & ரெய்ட் எதிர்ப்பு',
+    'feat-sl-name': 'இலங்கை தயாரிப்பு',
+    'feat-sl-val': 'Cinesubz மேலும்',
+    'card-title': 'உங்கள் WhatsApp இணைக்கவும்',
+    'card-subtitle': 'QR ஸ்கேன் தேவையில்லை — உடனடி இணைப்பு குறியீடு',
+    'vinfo-head': '🖥️ உங்கள் சாதன தகவல்',
+    'vinfo-ip': 'IP முகவரி',
+    'vinfo-isp': 'ISP / வழங்குனர்',
+    'vinfo-battery': 'பேட்டரி',
+    'vinfo-network': 'நெட்வொர்க்',
+    'vinfo-platform': 'தளம்',
+    'vinfo-browser': 'உலாவி',
+    'vinfo-screen': 'திரை',
+    'vinfo-language': 'மொழி',
+    'vinfo-timezone': 'நேர மண்டலம்',
+    'vinfo-localtime': 'உள்ளூர் நேரம்',
+    'vinfo-cpu': 'CPU கோர்கள்',
+    'vinfo-ram': 'சாதன RAM',
+    'vinfo-touch': 'தொடு புள்ளிகள்',
+    'vinfo-status': 'நிலை',
+    'cc-search-ph': 'நாடு தேடுக…',
+    'btn-pair': 'குறியீடு பெறுக',
+    'blk-title': 'எண் தடுக்கப்பட்டது',
+    'blk-text': 'இந்த எண் நிர்வாகியால் தடுக்கப்பட்டது.<br>உங்கள் எண்ணை திறக்க ஆதரவை தொடர்பு கொள்ளுங்கள்.',
+    'code-label': 'உங்கள் இணைப்பு குறியீடு',
+    'copy-btn': '📋 குறியீடு நகலெடு',
+    'code-hint': 'WhatsApp திறக்கவும் → <strong>அமைப்புகள் → இணைக்கப்பட்ட சாதனங்கள்</strong><br>→ <strong>சாதனத்தை இணைக்கவும்</strong> → இந்த குறியீட்டை உள்ளிடுக ✅',
+    'status-waiting': 'ஸ்கேனுக்காக காத்திருக்கிறது...',
+    'success-title': 'போட் செயலில் உள்ளது!',
+    'success-msg': 'தொடங்க WhatsApp இல் <strong style="color:var(--g1)">.menu</strong> அனுப்புங்கள்.',
+    'btn-settings': '⚙️ போட் அமைப்புகளை உள்ளமைக்கவும்',
+    'btn-reset': 'மற்றொரு எண்ணை இணைக்கவும்',
+    'step1': '<strong>உங்கள் எண்ணை உள்ளிடுக</strong> நாட்டு குறியீட்டுடன் (எ.கா. 94771234567)',
+    'step2': '<strong>குறியீடு பெறுக கிளிக் செய்யுங்கள்</strong> சில விநாடிகள் காத்திருங்கள்',
+    'step3': 'WhatsApp → <strong>அமைப்புகள் → இணைக்கப்பட்ட சாதனங்கள் → சாதனத்தை இணைக்கவும்</strong>',
+    'step4': '<strong>8-இலக்க குறியீட்டை உள்ளிடுக</strong> — உங்கள் போட் உடனடியாக செயல்படும் ⚡',
+    'community-title': 'எங்களுடன் இணைக்கவும்',
+    'team-label': '🧑‍💻 எங்கள் குழு — அரட்டைக்கு கிளிக் செய்யுங்கள்',
+    'grp-title': 'எங்கள் குழுவில் சேரவும்',
+    'grp-desc': 'UNITY-MD சமூகம் • ஆதரவு & புதுப்பிப்புகள்',
+    'ch-title': 'எங்கள் சேனலை பின்தொடரவும்',
+    'ch-desc': 'சமீபத்திய செய்திகள், அம்சங்கள் & அறிவிப்புகள்',
+    'footer-main': 'Powered by <a href="#">UNITY-MD</a> &nbsp;•&nbsp; ® யூனிட்டி குழு இலங்கை 🇱🇰',
+    'footer-sub': '660+ கட்டளைகள் &nbsp;•&nbsp; 99,999+ போட்கள் ஆதரவு',
+    'ov-sub': '® யூனிட்டி குழு • இலங்கை 🇱🇰',
+    'ov-label': 'அனுபவத்தில் நுழைய தட்டவும்',
+    'settings-title': '⚙️ போட் அமைப்புகள்',
+    'settings-close': '✕ மூடு',
+    'settings-unsaved': '⚠️ சேமிக்கப்படாத மாற்றங்கள் — சேமித்த பிறகு போட் மறுதொடக்கம் செய்யும்',
+    'settings-save': '💾 சேமி & மறுதொடக்கம்',
+    'cfg-loading': 'அமைப்புகள் ஏற்றுகிறது...',
+    'cfg-bot-mode': '🤖 போட் முறை',
+    'cfg-auto-feat': '⚡ தானியங்கி அம்சங்கள்',
+    'mode-public': '🌐 பொது',
+    'mode-group': '👥 குழு மட்டும்',
+    'mode-inbox': '📩 இன்பாக்ஸ் மட்டும்',
+    'mode-private': '🔒 தனிப்பட்ட',
+  }
+};
+
+function setLang(lang) {
+  LANG = lang;
+  // Update typewriter messages
+  if (window.ALL_MESSAGES) messages = ALL_MESSAGES[lang] || ALL_MESSAGES['en'];
+  // Update button states
+  document.querySelectorAll('.lbtn').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('onclick') === "setLang('"+lang+"')");
+  });
+  var d = T[lang] || T['en'];
+  // text content
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    var k = el.getAttribute('data-i18n');
+    if (d[k] !== undefined) el.textContent = d[k];
+  });
+  // innerHTML
+  document.querySelectorAll('[data-i18n-html]').forEach(function(el){
+    var k = el.getAttribute('data-i18n-html');
+    if (d[k] !== undefined) el.innerHTML = d[k];
+  });
+  // placeholders
+  document.querySelectorAll('[data-i18n-ph]').forEach(function(el){
+    var k = el.getAttribute('data-i18n-ph');
+    if (d[k] !== undefined) el.setAttribute('placeholder', d[k]);
+  });
+  // save-btn special case (may have been changed by saveSettings)
+  var sb = document.getElementById('save-btn');
+  if (sb && !sb.disabled) sb.textContent = d['settings-save'];
+  // store
+  try { localStorage.setItem('unity_lang', lang); } catch(e){}
+}
+
+// Auto-restore language
+(function(){
+  try {
+    var saved = localStorage.getItem('unity_lang');
+    if (saved && saved !== 'en') setTimeout(function(){ setLang(saved); }, 100);
+  } catch(e){}
+})();
+
+// ═══ METEORS ═══
+(function(){
+  var container = document.getElementById('meteors');
+  var colors = ['rgba(37,211,102,', 'rgba(0,229,255,', 'rgba(162,89,255,'];
+  for(var i=0;i<12;i++){
+    var m = document.createElement('div');
+    m.className='meteor';
+    var c = colors[i%3];
+    m.style.cssText=[
+      'left:'+(Math.random()*100)+'vw',
+      'height:'+(60+Math.random()*80)+'px',
+      'animation-duration:'+(4+Math.random()*8)+'s',
+      'animation-delay:'+(Math.random()*10)+'s',
+      'background:linear-gradient(180deg,rgba(0,0,0,0),'+c+'0.9),'+c+'0.5),transparent)',
+      'transform:rotate('+(10+Math.random()*20)+'deg)'
+    ].join(';');
+    container.appendChild(m);
+  }
+})();
+
+// ═══ FLOATING PARTICLES ═══
+(function(){
+  var colors=['var(--g1)','var(--g2)','var(--g3)','var(--g5)'];
+  for(var i=0;i<20;i++){
+    var p=document.createElement('div');
+    p.className='fp';
+    var sz=(2+Math.random()*3)+'px';
+    p.style.cssText=[
+      'width:'+sz,'height:'+sz,
+      'left:'+(Math.random()*100)+'vw',
+      'bottom:'+(Math.random()*80)+'vh',
+      'background:'+colors[i%4],
+      'box-shadow:0 0 6px '+colors[i%4],
+      'animation-duration:'+(3+Math.random()*6)+'s',
+      'animation-delay:'+(Math.random()*8)+'s'
+    ].join(';');
+    document.body.appendChild(p);
+  }
+})();
+
+</script>
+</body>
+</html>

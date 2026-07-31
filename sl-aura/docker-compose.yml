@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  sl-aura:
+    build: .
+    container_name: sl-aura
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./database/sessions:/app/database/sessions
+      - ./temp:/app/temp
+      - ./logs:/app/logs
+      - ./src/media:/app/src/media
+    env_file:
+      - config.env
+    environment:
+      - NODE_ENV=production

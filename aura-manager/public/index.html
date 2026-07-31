@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AURA Manager — Session Control</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0d0d0d; color: #e0e0e0; min-height: 100vh; }
+    .header { background: #1a1a1a; padding: 1rem 2rem; border-bottom: 2px solid #333; display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { font-size: 1.4rem; color: #fff; }
+    .header span { color: #666; font-size: 0.85rem; }
+    .container { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card { background: #1a1a1a; padding: 1rem; border-radius: 8px; text-align: center; }
+    .stat-card .num { font-size: 2rem; font-weight: bold; color: #4ade80; }
+    .stat-card .label { font-size: 0.8rem; color: #888; margin-top: 0.25rem; }
+    .refresh-btn { background: #333; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+    .refresh-btn:hover { background: #444; }
+    .sessions-table { width: 100%; border-collapse: collapse; }
+    .sessions-table th { background: #1a1a1a; padding: 0.75rem 1rem; text-align: left; font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+    .sessions-table td { padding: 0.75rem 1rem; border-top: 1px solid #222; font-size: 0.9rem; }
+    .sessions-table tr:hover td { background: #151515; }
+    .session-id { font-family: monospace; color: #4ade80; }
+    .time { color: #888; font-size: 0.85rem; }
+    .actions { display: flex; gap: 0.5rem; }
+    .btn { padding: 0.35rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+    .btn-restart { background: #1e3a5f; color: #60a5fa; }
+    .btn-restart:hover { background: #254a73; }
+    .btn-delete { background: #5f1e1e; color: #f87171; }
+    .btn-delete:hover { background: #732525; }
+    .empty { text-align: center; padding: 3rem; color: #666; }
+    .loading { text-align: center; padding: 2rem; color: #888; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🖤 AURA Manager</h1>
+    <span>Session Control Panel</span>
+  </div>
+  <div class="container">
+    <div class="stats">
+      <div class="stat-card">
+        <div class="num" id="totalSessions">—</div>
+        <div class="label">Total Sessions</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" id="recentSessions">—</div>
+        <div class="label">Active (1h)</div>
+      </div>
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h2 style="font-size: 1rem; color: #ccc;">Sessions</h2>
+      <button class="refresh-btn" onclick="loadSessions()">↻ Refresh</button>
+    </div>
+    <div id="content">
+      <div class="loading">Loading sessions...</div>
+    </div>
+  </div>
+
+  <script>
+    async function loadSessions() {
+      const content = document.getElementById('content');
+      content.innerHTML = '<div class="loading">Loading...</div>';
+      
+      try {
+        const [res, statsRes] = await Promise.all([
+          fetch('/api/sessions'),
+          fetch('/api/sessions')
+        ]);
+        const data = await res.json();
+        const allSessions = data.sessions || [];
+        
+        const now = Date.now();
+        const recent = allSessions.filter(s => {
+          if (!s.updatedAt) return false;
+          return (now - new Date(s.updatedAt).getTime()) < 3600000;
+        }).length;
+        
+        document.getElementById('totalSessions').textContent = allSessions.length;
+        document.getElementById('recentSessions').textContent = recent;
+        
+        if (allSessions.length === 0) {
+          content.innerHTML = '<div class="empty">No sessions found.<br><small>Users need to run <code>sl-aura --pair</code> first.</small></div>';
+          return;
+        }
+        
+        let html = '<table class="sessions-table"><thead><tr><th>Session ID</th><th>Last Active</th><th>Actions</th></tr></thead><tbody>';
+        allSessions.forEach(s => {
+          const time = s.updatedAt ? new Date(s.updatedAt).toLocaleString() : 'unknown';
+          const id = s._id;
+          html += `<tr>
+            <td class="session-id">${id}</td>
+            <td class="time">${time}</td>
+            <td class="actions">
+              <button class="btn btn-restart" onclick="restartSession('${id}')">↻ Restart</button>
+              <button class="btn btn-delete" onclick="deleteSession('${id}')">🗑 Delete</button>
+            </td>
+          </tr>`;
+        });
+        html += '</tbody></table>';
+        content.innerHTML = html;
+      } catch (err) {
+        content.innerHTML = `<div class="empty">Failed to load: ${err.message}</div>`;
+      }
+    }
+    
+    async function deleteSession(id) {
+      if (!confirm(`Delete session "${id}"?`)) return;
+      try {
+        const res = await fetch(`/api/sessions/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        alert(data.ok ? `✅ ${data.message}` : `❌ ${data.error}`);
+        loadSessions();
+      } catch (err) {
+        alert(`Error: ${err.message}`);
+      }
+    }
+    
+    async function restartSession(id) {
+      try {
+        const res = await fetch(`/api/sessions/${id}/restart`, { method: 'POST' });
+        const data = await res.json();
+        alert(data.ok ? `✅ ${data.message}` : `❌ ${data.error}`);
+        loadSessions();
+      } catch (err) {
+        alert(`Error: ${err.message}`);
+      }
+    }
+    
+    loadSessions();
+    setInterval(loadSessions, 30000); // auto-refresh every 30s
+  </script>
+</body>
+</html>
