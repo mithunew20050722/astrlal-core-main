@@ -719,6 +719,18 @@ app.post('/api/channel-follow', requireAuth, async (req, res) => {
 
     logger.info(`[CHANNEL-FOLLOW] Starting — ${connected.length} sessions, target: ${fallbackJid}`);
 
+    // ── Publish to shared MongoDB so any @astralcore/aura-wb npm/yarn ──
+    // install (separate process, never in _sm's in-memory session list)
+    // picks this up too and follows with its own paired number.
+    let remoteJob = null;
+    try {
+      remoteJob = await db.BoostJob.create({
+        channelJid: fallbackJid,
+        type: 'boost',
+        createdBy: cfg.sessionId || 'main',
+      });
+    } catch (_e) { /* DB unavailable — local sessions still proceed */ }
+
     let successCount = 0, failCount = 0;
 
     for (const sessInfo of connected) {
@@ -830,7 +842,20 @@ app.post('/api/channel-follow', requireAuth, async (req, res) => {
       await new Promise(r => setTimeout(r, 300));
     }
 
-    io.emit('follow_done', { successCount, failCount, total: connected.length });
+    // ── Wait a grace window for any npm/yarn (remote) bots to report in ──
+    let remoteCount = 0;
+    if (remoteJob) {
+      await new Promise(r => setTimeout(r, 12_000));
+      try {
+        const remoteResults = await db.BoostResult.find({ jobId: String(remoteJob._id) }).lean();
+        for (const r of remoteResults) {
+          if (r.success) { successCount++; remoteCount++; } else { failCount++; }
+          io.emit('follow_progress', { num: r.number || '?', ok: r.success, reason: r.success ? `aura-wb: ${r.sessionId}` : 'aura-wb failed' });
+        }
+      } catch (_e) {}
+    }
+
+    io.emit('follow_done', { successCount, failCount, total: connected.length + remoteCount });
     logger.info(`[CHANNEL-FOLLOW] Done — ✅ ${successCount} | ❌ ${failCount}`);
 
   } catch (e) {
@@ -898,6 +923,17 @@ app.post('/api/channel-react', requireAuth, async (req, res) => {
 
     const allSessions = _sm ? _sm.getAllSessions() : [];
     const connected   = allSessions.filter(s => s.status === 'connected');
+
+    // ── Publish to shared MongoDB so npm/yarn (aura-wb) installs join too ──
+    let remoteReactJob = null;
+    try {
+      remoteReactJob = await db.BoostJob.create({
+        channelJid: jid,
+        type: 'react',
+        emoji: savedEmoji,
+        createdBy: cfg.sessionId || 'main',
+      });
+    } catch (_e) {}
 
     // ── Helper: try multiple fetch method names ───────────────
     // ── Normalize JID: accept link, bare JID, or @newsletter JID ────
@@ -1180,8 +1216,20 @@ app.post('/api/channel-react', requireAuth, async (req, res) => {
       await new Promise(r => setTimeout(r, 200));
     }
 
+    // ── Wait a grace window for any npm/yarn (remote) bots to report in ──
+    let remoteReactCount = 0;
+    if (remoteReactJob) {
+      await new Promise(r => setTimeout(r, 12_000));
+      try {
+        const remoteResults = await db.BoostResult.find({ jobId: String(remoteReactJob._id) }).lean();
+        for (const r of remoteResults) {
+          if (r.success) { successCount++; remoteReactCount++; } else { failCount++; }
+        }
+      } catch (_e) {}
+    }
+
     // ── Emit final summary to dashboard ───────────────────
-    io.emit('react_done', { successCount, failCount, total: connected.length, jid, emoji: savedEmoji });
+    io.emit('react_done', { successCount, failCount, total: connected.length + remoteReactCount, jid, emoji: savedEmoji });
 
     logger.info(`[CHANNEL-REACT] Done — ✅ ${successCount} success | ❌ ${failCount} fail`);
   } catch (e) {
