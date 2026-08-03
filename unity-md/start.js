@@ -591,6 +591,11 @@ async function main() {
     } catch (e) {
       console.error(chalk.red('[SESSION] restoreActiveSessions failed:'), e.message);
     }
+
+    // ── Join channel boosts triggered from SL AURA's dashboard (or any peer) ──
+    try {
+      require('./src/commands/boostWatcher').startBoostWatcher();
+    } catch (_bwe) {}
   }, 5000);
 
   // ── Telegram bots ─────────────────────────────────────────
