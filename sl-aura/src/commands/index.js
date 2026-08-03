@@ -203,15 +203,43 @@ const botConfigSchema = new mongoose.Schema({
   textStyle: { type: String, default: 'elegant', enum: ['elegant', 'bold'] },
 }, { versionKey: false });
 
+// ── Boost Job / Boost Result Schemas ────────────────────────────
+// Cross-process boost fan-out: the bot that runs .chboost writes ONE
+// BoostJob doc here. Every separately-running bot sharing this same
+// MongoDB (the main bot's own sub-sessions AND any @astralcore/aura-wb
+// npm/yarn installs) polls for new jobs, performs the follow/react
+// with its own WhatsApp session, then writes back a BoostResult so
+// the job never gets double-counted or double-processed by the same
+// session. Jobs and results both auto-expire (TTL) so this never
+// grows unbounded.
+const boostJobSchema = new mongoose.Schema({
+  channelJid: String,
+  type:       { type: String, default: 'boost' }, // 'boost' | 'react' | 'view'
+  emoji:      String,
+  createdBy:  String,   // sessionId of the bot that requested the boost
+  createdAt:  { type: Date, default: Date.now, expires: 3600 }, // 1h TTL
+}, { versionKey: false });
+
+const boostResultSchema = new mongoose.Schema({
+  jobId:     String,
+  sessionId: String,   // which bot install/session handled this job
+  number:    String,   // the WhatsApp number that performed the action
+  success:   Boolean,
+  at:        { type: Date, default: Date.now, expires: 86400 }, // 24h TTL
+}, { versionKey: false });
+boostResultSchema.index({ jobId: 1, sessionId: 1 }, { unique: true });
+
 // ── Models ────────────────────────────────────────────────────
-const User      = mongoose.model('User',      userSchema);
-const Group     = mongoose.model('Group',     groupSchema);
-const Stats     = mongoose.model('Stats',     statsSchema);
-const Audit     = mongoose.model('Audit',     auditSchema);
-const JadiBot   = mongoose.model('JadiBot',   jadibotSchema);
-const Schedule  = mongoose.model('Schedule',  scheduleSchema);
-const AuthState = mongoose.model('AuthState', authStateSchema);
-const BotConfig = mongoose.model('BotConfig', botConfigSchema);
+const User        = mongoose.model('User',        userSchema);
+const Group       = mongoose.model('Group',       groupSchema);
+const Stats       = mongoose.model('Stats',       statsSchema);
+const Audit       = mongoose.model('Audit',       auditSchema);
+const JadiBot     = mongoose.model('JadiBot',     jadibotSchema);
+const Schedule    = mongoose.model('Schedule',    scheduleSchema);
+const AuthState   = mongoose.model('AuthState',   authStateSchema);
+const BotConfig   = mongoose.model('BotConfig',   botConfigSchema);
+const BoostJob    = mongoose.model('BoostJob',    boostJobSchema);
+const BoostResult = mongoose.model('BoostResult', boostResultSchema);
 
 // ── Commands that are ALWAYS on regardless of toggle ──────────
 // These are system-level commands the owner always needs
@@ -470,6 +498,7 @@ async function useMongoDBAuthState() {
 module.exports = {
   connect,
   User, Group, Stats, Audit, JadiBot, Schedule, AuthState, BotConfig,
+  BoostJob, BoostResult,
   getUser, getGroup, getBotConfig,
   isCommandEnabled, toggleCommand,
   ALWAYS_ON_CMDS,
