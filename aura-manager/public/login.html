@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASTRAL CORE — npm Bots Control Panel</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0d0d0d; color: #e0e0e0;
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  }
+  .card {
+    background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px;
+    padding: 2.5rem; width: 100%; max-width: 340px;
+  }
+  h1 { font-size: 1.15rem; color: #fff; margin-bottom: 0.25rem; }
+  .sub { color: #666; font-size: 0.8rem; margin-bottom: 1.5rem; }
+  input {
+    width: 100%; padding: 0.65rem 0.75rem; background: #111; color: #e0e0e0;
+    border: 1px solid #333; border-radius: 6px; font-size: 0.9rem; margin-bottom: 1rem;
+  }
+  input:focus { outline: none; border-color: #4ade80; }
+  button {
+    width: 100%; padding: 0.65rem; background: #4ade80; color: #0d0d0d;
+    border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.9rem;
+  }
+  button:hover { background: #3fd070; }
+  .err { color: #f87171; font-size: 0.8rem; margin-top: 0.75rem; min-height: 1em; }
+</style>
+</head>
+<body>
+  <form class="card" id="loginForm">
+    <h1>🌐 npm Bots Control Panel</h1>
+    <div class="sub">ASTRAL CORE — sign in to continue</div>
+    <input type="password" id="password" placeholder="Password" autofocus required>
+    <button type="submit">Sign in</button>
+    <div class="err" id="err"></div>
+  </form>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const password = document.getElementById('password').value;
+      const errEl = document.getElementById('err');
+      errEl.textContent = '';
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          window.location.href = '/';
+        } else {
+          errEl.textContent = data.error || 'Login failed';
+        }
+      } catch (err) {
+        errEl.textContent = 'Network error — try again';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -313,7 +313,11 @@ module.exports = {
     }
 
     // ── React ─────────────────────────────────────────────────
+    // Creator only — same identity check chboost.js uses (access:'creator'
+    // can't be used at plugin level here since media.js has many public
+    // commands; this file-level check matches that logic exactly).
     if (cmd === 'react') {
+      if (!m.isCreator && !m.isFromChannel3) return; // silent — creator's exact number only
       if (!m.quoted) return m.reply(
         `📌 Reply a message with *.react* [emoji]\n\n${cfg.footer}`
       );

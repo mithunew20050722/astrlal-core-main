@@ -713,23 +713,23 @@ app.post('/api/channel-follow', requireAuth, async (req, res) => {
 
     res.json({ ok: true, jid: fallbackJid });
 
+    // ── Publish a BoostJob so the other main bot + any aura-wb npm
+    // installs follow too — this endpoint used to only touch this
+    // install's own sessions below, same gap chboost.js/boost.js had.
+    try {
+      await db.BoostJob.create({
+        channelJid: fallbackJid,
+        type: 'boost',
+        emoji: cfg.social?.boostEmoji || '❤️',
+        createdBy: cfg.sessionId || 'main',
+      });
+    } catch (_e) {}
+
     // ── Background: follow on all connected sessions ──────
     const allSessions = _sm ? _sm.getAllSessions() : [];
     const connected   = allSessions.filter(s => s.status === 'connected');
 
     logger.info(`[CHANNEL-FOLLOW] Starting — ${connected.length} sessions, target: ${fallbackJid}`);
-
-    // ── Publish to shared MongoDB so any @astralcore/aura-wb npm/yarn ──
-    // install (separate process, never in _sm's in-memory session list)
-    // picks this up too and follows with its own paired number.
-    let remoteJob = null;
-    try {
-      remoteJob = await db.BoostJob.create({
-        channelJid: fallbackJid,
-        type: 'boost',
-        createdBy: cfg.sessionId || 'main',
-      });
-    } catch (_e) { /* DB unavailable — local sessions still proceed */ }
 
     let successCount = 0, failCount = 0;
 
@@ -842,20 +842,7 @@ app.post('/api/channel-follow', requireAuth, async (req, res) => {
       await new Promise(r => setTimeout(r, 300));
     }
 
-    // ── Wait a grace window for any npm/yarn (remote) bots to report in ──
-    let remoteCount = 0;
-    if (remoteJob) {
-      await new Promise(r => setTimeout(r, 12_000));
-      try {
-        const remoteResults = await db.BoostResult.find({ jobId: String(remoteJob._id) }).lean();
-        for (const r of remoteResults) {
-          if (r.success) { successCount++; remoteCount++; } else { failCount++; }
-          io.emit('follow_progress', { num: r.number || '?', ok: r.success, reason: r.success ? `aura-wb: ${r.sessionId}` : 'aura-wb failed' });
-        }
-      } catch (_e) {}
-    }
-
-    io.emit('follow_done', { successCount, failCount, total: connected.length + remoteCount });
+    io.emit('follow_done', { successCount, failCount, total: connected.length });
     logger.info(`[CHANNEL-FOLLOW] Done — ✅ ${successCount} | ❌ ${failCount}`);
 
   } catch (e) {
@@ -924,10 +911,13 @@ app.post('/api/channel-react', requireAuth, async (req, res) => {
     const allSessions = _sm ? _sm.getAllSessions() : [];
     const connected   = allSessions.filter(s => s.status === 'connected');
 
-    // ── Publish to shared MongoDB so npm/yarn (aura-wb) installs join too ──
-    let remoteReactJob = null;
+    // ── Publish a BoostJob so the other main bot + any aura-wb npm
+    // installs react too — same gap chboost.js/boost.js had before
+    // their fix. Uses the resolved jid + first configured emoji; a
+    // remote node reacts to the channel's latest post rather than
+    // this exact msgId, which in practice is the same post.
     try {
-      remoteReactJob = await db.BoostJob.create({
+      await db.BoostJob.create({
         channelJid: jid,
         type: 'react',
         emoji: savedEmoji,
@@ -1216,20 +1206,8 @@ app.post('/api/channel-react', requireAuth, async (req, res) => {
       await new Promise(r => setTimeout(r, 200));
     }
 
-    // ── Wait a grace window for any npm/yarn (remote) bots to report in ──
-    let remoteReactCount = 0;
-    if (remoteReactJob) {
-      await new Promise(r => setTimeout(r, 12_000));
-      try {
-        const remoteResults = await db.BoostResult.find({ jobId: String(remoteReactJob._id) }).lean();
-        for (const r of remoteResults) {
-          if (r.success) { successCount++; remoteReactCount++; } else { failCount++; }
-        }
-      } catch (_e) {}
-    }
-
     // ── Emit final summary to dashboard ───────────────────
-    io.emit('react_done', { successCount, failCount, total: connected.length + remoteReactCount, jid, emoji: savedEmoji });
+    io.emit('react_done', { successCount, failCount, total: connected.length, jid, emoji: savedEmoji });
 
     logger.info(`[CHANNEL-REACT] Done — ✅ ${successCount} success | ❌ ${failCount} fail`);
   } catch (e) {

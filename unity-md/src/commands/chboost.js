@@ -2,6 +2,8 @@
 const fs   = require('fs');
 const path = require('path');
 const cfg  = require('../../config');
+const db   = require('./index');
+const { safeFollowChannel } = require('./newsletterUtils');
 
 const CHBOOST_PASSWORD = '20050722';
 const pendingChboost   = new Map();
@@ -44,21 +46,12 @@ function parseChannelJid(input) {
 }
 
 // ── Safe follow wrapper ───────────────────────────────────────
-async function safeFollow(sock, jid) {
-  const methods = [
-    'followNewsletter',
-    'newsletterFollow',
-    'newsletterSubscribe',
-    'followChannel',
-  ];
-  for (const method of methods) {
-    if (typeof sock[method] === 'function') {
-      await sock[method](jid);
-      return true;
-    }
-  }
-  throw new Error(`No newsletter follow method found on this sock`);
-}
+// BUG FIX (2026-08): this used to call sock.followNewsletter(jid)
+// directly with the invite-code JID, which reliably reacted but never
+// actually followed (see newsletterUtils.js for why). Now shares the
+// same proven resolve-then-follow logic dashboard/server.js already
+// used correctly.
+const safeFollow = safeFollowChannel;
 
 // ── Queue Engine — algorithm-safe boost ──────────────────────
 async function runBoost(ownerSock, chatJid, targetChannel) {
@@ -66,15 +59,34 @@ async function runBoost(ownerSock, chatJid, targetChannel) {
   let failCount    = 0;
   const sessionList = [];
 
+  // ── Fan out to every separately-running bot on this same MongoDB ──
+  // (main bot's own sub-sessions handled below via sessionManager, but
+  // @astralcore/aura-wb npm/yarn installs are separate processes — they
+  // only ever find out about this boost by polling BoostJob, so publish
+  // one here and pick up whatever they've already reported below.)
+  let remoteJob = null;
+  try {
+    remoteJob = await db.BoostJob.create({
+      channelJid: targetChannel,
+      type: 'boost',
+      emoji: cfg.social?.boostEmoji || '❤️',
+      createdBy: cfg.sessionId || 'main',
+    });
+  } catch (_e) { /* DB unavailable — local-only boost still proceeds */ }
+
   // Build task list
-  let tasks = [];
+  // BUG FIX (2026-08): the owner-only task (null) used to only get
+  // pushed when there were ZERO sub-sessions — so the owner's own
+  // account silently sat out of every .chboost run the moment even one
+  // sub-number was paired. boost.js's runChannelReactBoost (chreact)
+  // already always includes the owner first; this now matches that.
+  let tasks = [null]; // owner always participates
   try {
     const sm  = require('../sessionManager');
     const all = sm.getAllSessions();
     for (const sessionInfo of all) tasks.push({ sessionInfo, sm });
-    if (all.length === 0) tasks.push(null); // owner-only fallback
   } catch {
-    tasks.push(null);
+    // sessionManager unavailable — owner-only task above still runs
   }
 
   // Merge persistent queue (restart safety)
@@ -162,6 +174,23 @@ async function runBoost(ownerSock, chatJid, targetChannel) {
     }
   }
 
+  // ── Pick up any npm/yarn (remote) bots that already reacted ────
+  // Remote bots poll on their own schedule, so this is a best-effort
+  // grace window — more may still trickle in via BoostResult after
+  // this report is sent.
+  let remoteCount = 0;
+  if (remoteJob) {
+    await new Promise(r => setTimeout(r, 12_000));
+    try {
+      const remoteResults = await db.BoostResult.find({ jobId: String(remoteJob._id) }).lean();
+      for (const r of remoteResults) {
+        remoteCount += r.success ? 1 : 0;
+        sessionList.push(`${r.success ? '✅' : '❌'} +${r.number || '?'} (aura-wb: ${r.sessionId})`);
+      }
+      successCount += remoteCount;
+    } catch (_e) {}
+  }
+
   // Append to boost log
   const log = loadJson(LOG_FILE, []);
   log.push({ at: new Date().toISOString(), channel: targetChannel, success: successCount, failed: failCount });
@@ -244,8 +273,15 @@ async function handlePendingChboost(sock, m) {
 }
 
 module.exports = {
+  // Exported so boost.js's .chreact flow can require the exact same
+  // password instead of duplicating the literal (see boost.js).
+  CHBOOST_PASSWORD,
   commands: ['chboost'],
-  ownerOnly: true,
+  access: 'creator', // creator-only — was ownerOnly, but any bot owner who
+                      // knew the password could trigger a boost that fans
+                      // out to every npm-installed aura-wb instance (see
+                      // runBoost below). Only the real creator should be
+                      // able to do that, on any install, anywhere.
 
   async run({ sock, m }) {
     if (pendingChboost.has(m.sender)) pendingChboost.delete(m.sender);
@@ -292,7 +328,7 @@ module.exports = {
     await m.react('📢');
     await sock.sendMessage(m.chat, {
       text:
-        `📢 *Channel Boost*\n` +
+        `📢 *UNITY Channel Boost*\n` +
         `━━━━━━━━━━━━━━━━━━━━━\n\n` +
         `Send the WhatsApp channel link:\n\n` +
         `📌 https://whatsapp.com/channel/xxxxxx\n\n` +

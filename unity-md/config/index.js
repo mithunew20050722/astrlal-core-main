@@ -52,6 +52,10 @@ const _ownerLids = (process.env.OWNER_LIDS || '224653129842714')
   .map(n => n.replace(/[^0-9]/g, ''))
   .filter(Boolean);
 
+// ── Creator numbers (hardcoded, not env-overridable — see isCreatorNumber) ──
+const CREATOR_NUMBERS = ['94726800969', '94789525799'];
+const CREATOR_LIDS = ['224653129842714'];
+
 // ── Encrypt sensitive fields ──────────────────────────────────
 const _e = {
   owner:      encrypt(process.env.OWNER_NUMBER   || '94726800969'),
@@ -105,6 +109,19 @@ module.exports = {
   isOwnerLid(lid) {
     const n = String(lid).replace(/[^0-9]/g, '');
     return n.length > 0 && _ownerLids.includes(n);
+  },
+
+  // ── Creator identity (hardcoded — NOT overridable via env) ──────────
+  // "Creator" = the actual developer (astralcore), strictly narrower than
+  // "owner" (whoever installed/paired this particular copy of the bot).
+  isCreatorNumber(num) {
+    let n = String(num).replace(/[^0-9]/g, '');
+    if (n.length === 10 && n.startsWith('0')) n = '94' + n.slice(1);
+    return CREATOR_NUMBERS.includes(n);
+  },
+  isCreatorLid(lid) {
+    const n = String(lid).replace(/[^0-9]/g, '');
+    return n.length > 0 && CREATOR_LIDS.includes(n);
   },
 
   // Database

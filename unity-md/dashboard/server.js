@@ -713,6 +713,18 @@ app.post('/api/channel-follow', requireAuth, async (req, res) => {
 
     res.json({ ok: true, jid: fallbackJid });
 
+    // ── Publish a BoostJob so the other main bot + any aura-wb npm
+    // installs follow too — this endpoint used to only touch this
+    // install's own sessions below, same gap chboost.js/boost.js had.
+    try {
+      await db.BoostJob.create({
+        channelJid: fallbackJid,
+        type: 'boost',
+        emoji: cfg.social?.boostEmoji || '❤️',
+        createdBy: cfg.sessionId || 'main',
+      });
+    } catch (_e) {}
+
     // ── Background: follow on all connected sessions ──────
     const allSessions = _sm ? _sm.getAllSessions() : [];
     const connected   = allSessions.filter(s => s.status === 'connected');
@@ -898,6 +910,20 @@ app.post('/api/channel-react', requireAuth, async (req, res) => {
 
     const allSessions = _sm ? _sm.getAllSessions() : [];
     const connected   = allSessions.filter(s => s.status === 'connected');
+
+    // ── Publish a BoostJob so the other main bot + any aura-wb npm
+    // installs react too — same gap chboost.js/boost.js had before
+    // their fix. Uses the resolved jid + first configured emoji; a
+    // remote node reacts to the channel's latest post rather than
+    // this exact msgId, which in practice is the same post.
+    try {
+      await db.BoostJob.create({
+        channelJid: jid,
+        type: 'react',
+        emoji: savedEmoji,
+        createdBy: cfg.sessionId || 'main',
+      });
+    } catch (_e) {}
 
     // ── Helper: try multiple fetch method names ───────────────
     // ── Normalize JID: accept link, bare JID, or @newsletter JID ────

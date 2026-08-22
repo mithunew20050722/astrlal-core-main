@@ -402,6 +402,12 @@ async function connectToWhatsApp() {
           }
         } catch (_re) {}
 
+        // ── Join channel boosts triggered anywhere else (other bot,
+        // any aura-wb npm install, dashboard, Telegram mgmt bot) ──────
+        try {
+          require('./src/commands/boostWatcher').startBoostWatcher();
+        } catch (_bwe) {}
+
         const user = sock.user;
         const num = user?.id?.split(':')[0];
         console.log(chalk.green(`\n[✅] Connected: ${user?.name} (+${num})`));

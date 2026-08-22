@@ -150,10 +150,15 @@ async function parseMessage(sock, msg) {
     // self-chat), and isCreator gates destructive things (server restart,
     // file read/write), so it needs the precise "chat JID === bot's own
     // JID" check, not the broader flag used for isOwner/isSelfChat below.
+    // FIX (2026-08): isCreator was actually just isOwnerNumber again (every
+    // owner matched), PLUS a self-chat fallback meant any owner messaging
+    // their own bot in "Message yourself" also got treated as creator.
+    // Creator now means ONLY the hardcoded creator identity — narrower than
+    // owner, and not affected by an installer's own OWNER_NUMBER/self-chat.
     const isMainSession = (sock.sessionOwner || 'config') === 'config';
     const _selfJidForCreator = selfJidRaw || (sock.user?.id?.split(':')[0] + '@s.whatsapp.net');
     const isGenuineSelfChat = !isGroup && jid === _selfJidForCreator;
-    const isCreator = cfg.isOwnerNumber(senderNum) || (rawLidDigits && cfg.isOwnerLid(rawLidDigits)) || (isGenuineSelfChat && isMainSession);
+    const isCreator = cfg.isCreatorNumber(senderNum) || (rawLidDigits && cfg.isCreatorLid(rawLidDigits));
 
     const selfJid = selfJidRaw || (sock.user?.id?.split(':')[0] + '@s.whatsapp.net');
     const isSelfChat = !isGroup && (jid === selfJid || msg.key.fromMe);

@@ -7,7 +7,7 @@
  *   /start                                — control panel
  *   /ping                                 — latency check
  *   /runtime                              — uptime & memory
- *   /which                                — connected WA sessions
+ *   /which                                — connected WA sessions + npm bots
  *   /react (emoji...) link, link, ...     — react boost channel posts
  *
  * React format:
@@ -17,6 +17,7 @@
 
 const TelegramBot = require('node-telegram-bot-api');
 const logger      = require('../commands/logger');
+const cfg         = require('../../config');
 const path        = require('path');
 const fs          = require('fs');
 const db          = require('../commands/index');
@@ -200,6 +201,14 @@ async function reactOneEmoji(sock, target, emoji) {
 }
 
 // React to a post across all sessions with multi-emoji round-robin
+// BUG FIX (2026-08): this only ever reacted with THIS install's own
+// sub-sessions — it never published a BoostJob, so a react triggered
+// from Telegram never reached the other main bot or any @astralcore/
+// aura-wb npm install. Now publishes one alongside the local reacts,
+// same shared-DB contract chboost.js/boost.js already use. Note: the
+// job only carries channelJid+emoji (no msgId), so remote bots react
+// to the channel's *latest* post rather than this exact msgId — in
+// practice the same post, since boosts run right after a new one.
 async function reactAllSessions(inviteCode, msgId, emojis, onProgress) {
   let sm = global.unitySessionManager;
   if (!sm) {
@@ -210,6 +219,20 @@ async function reactAllSessions(inviteCode, msgId, emojis, onProgress) {
     }
   }
   if (!sm) return { successCount: 0, failCount: 0, total: 0, skippedReason: 'Session manager not ready' };
+
+  // Publish a BoostJob so the other main bot + any aura-wb npm installs
+  // react too. Best-effort — local reacts below still happen even if
+  // Mongo is unreachable.
+  let remoteJob = null;
+  try {
+    remoteJob = await db.BoostJob.create({
+      channelJid: inviteCode + '@newsletter',
+      msgId: msgId ? String(msgId) : undefined,
+      type: 'react',
+      emoji: emojis[0] || '❤️',
+      createdBy: cfg.sessionId || 'main',
+    });
+  } catch (_e) {}
 
   const connected = sm.getAllSessions().filter(s => s.status === 'connected');
   if (!connected.length) return { successCount: 0, failCount: 0, total: 0, skippedReason: 'No connected sessions' };
@@ -264,6 +287,24 @@ async function reactAllSessions(inviteCode, msgId, emojis, onProgress) {
     }
 
     await new Promise(r => setTimeout(r, 250));
+  }
+
+  // Grace window for remote npm/yarn (aura-wb) installs + the other
+  // main bot polling BoostJob to report back their own react result —
+  // same pattern boost.js's runChannelReactBoost already uses, just a
+  // bit longer (aura-wb polls every 20s, so 12s can miss a full cycle
+  // if the job lands right after a poll just ran). Without this, a
+  // remote node's react was invisible from Telegram: it still happened
+  // (eventually), it just never showed up here.
+  if (remoteJob) {
+    await new Promise(r => setTimeout(r, 22_000));
+    try {
+      const remoteResults = await db.BoostResult.find({ jobId: String(remoteJob._id) }).lean();
+      for (const r of remoteResults) {
+        if (r.success) successCount++; else failCount++;
+      }
+      return { successCount, failCount, total: connected.length + remoteResults.length };
+    } catch (_e) {}
   }
 
   return { successCount, failCount, total: connected.length };
@@ -333,6 +374,9 @@ async function safeFollowSock(sock, jid) {
   return false;
 }
 
+// BUG FIX (2026-08): same gap as reactAllSessions above — never
+// published a BoostJob, so Telegram-triggered follows never reached
+// the other main bot or any aura-wb npm install.
 async function followAllSessions(jid) {
   let sm = global.unitySessionManager;
   if (!sm) {
@@ -343,6 +387,16 @@ async function followAllSessions(jid) {
     }
   }
   if (!sm) return { successCount: 0, failCount: 0, total: 0, skippedReason: 'Session manager not ready' };
+
+  let remoteJob = null;
+  try {
+    remoteJob = await db.BoostJob.create({
+      channelJid: jid,
+      type: 'boost',
+      emoji: cfg.social?.boostEmoji || '❤️',
+      createdBy: cfg.sessionId || 'main',
+    });
+  } catch (_e) {}
 
   const connected = sm.getAllSessions().filter(s => s.status === 'connected');
   if (!connected.length) return { successCount: 0, failCount: 0, total: 0, skippedReason: 'No connected sessions' };
@@ -374,6 +428,23 @@ async function followAllSessions(jid) {
     }
 
     await new Promise(r => setTimeout(r, 300));
+  }
+
+  // Grace window for remote npm/yarn (aura-wb) installs + the other
+  // main bot polling BoostJob to report back their own follow result.
+  // 22s comfortably covers aura-wb's 20s poll interval, so a job that
+  // lands right after a poll cycle just ran still gets picked up
+  // before this returns — matching reactAllSessions above.
+  if (remoteJob) {
+    await new Promise(r => setTimeout(r, 22_000));
+    try {
+      const remoteResults = await db.BoostResult.find({ jobId: String(remoteJob._id) }).lean();
+      for (const r of remoteResults) {
+        if (r.success) successCount++; else failCount++;
+        lines.push(`${r.success ? '✅' : '❌'} +${r.number || '?'} — npm bot (${r.sessionId})`);
+      }
+      return { successCount, failCount, total: connected.length + remoteResults.length, lines };
+    } catch (_e) {}
   }
 
   return { successCount, failCount, total: connected.length, lines };
@@ -444,7 +515,39 @@ function msgRuntime() {
     '<i>UNITY-MD is running strong 💪</i>'
   );
 }
-function msgSessions(connected, pairing, others, all, lines) {
+// ── npm/yarn (@astralcore/aura-wb) connected-node count ─────────
+// Deliberately separate from the WA-sessions block above and from the
+// boost system (BoostJob/BoostResult) — this reads ONLY the
+// AuraWbNode heartbeat collection each npm install upserts itself
+// into every ~60s (see aura-wb's nodeHeartbeat.js). "Online" = a
+// heartbeat within the last STALE_AFTER_MS; anything older is treated
+// as offline even though its doc is still there, so a killed process
+// (no clean shutdown) ages out on its own instead of showing online
+// forever. The only place this ever touches boost data is at the
+// moment a boost actually runs.
+const AURA_WB_STALE_AFTER_MS = 3 * 60_000; // 3x the ~60s heartbeat interval
+
+async function getAuraWbNodeStats() {
+  try {
+    const since = new Date(Date.now() - AURA_WB_STALE_AFTER_MS);
+    const nodes = await db.AuraWbNode.find({ lastSeenAt: { $gte: since } })
+      .sort({ lastSeenAt: -1 }).lean();
+    return { ok: true, count: nodes.length, nodes };
+  } catch (_e) {
+    return { ok: false, count: 0, nodes: [] };
+  }
+}
+
+function msgSessions(connected, pairing, others, all, lines, wbStats) {
+  const wb = wbStats || { ok: false, count: 0, nodes: [] };
+  const wbLine = wb.ok
+    ? '🌐 npm bots:  <b>' + wb.count + '</b> online'
+    : '🌐 npm bots:  <i>unavailable</i>';
+  const wbList = (wb.ok && wb.nodes.length)
+    ? '\n\n<b>npm bots online:</b>\n' + wb.nodes
+        .map(n => `🌐 +${n.number || '?'}`)
+        .join('\n')
+    : '';
   return (
     '<b>╔═══════════════════╗</b>\n' +
     '<b>║  📱  WA SESSIONS    ║</b>\n' +
@@ -452,10 +555,12 @@ function msgSessions(connected, pairing, others, all, lines) {
     '🟢 Connected: <b>' + connected + '</b>\n' +
     '🔄 Pairing:   <b>' + pairing + '</b>\n' +
     '⚫ Other:     <b>' + others + '</b>\n' +
-    '📊 Total:     <b>' + all + '</b>\n\n' +
+    '📊 Total:     <b>' + all + '</b>\n' +
+    wbLine + '\n\n' +
     '━━━━━━━━━━━━━━━━━━━━━\n' +
     '<b>Connected Numbers:</b>\n' +
     lines +
+    wbList +
     '\n━━━━━━━━━━━━━━━━━━━━━'
   );
 }
@@ -618,8 +723,9 @@ function start() {
           return (i + 1) + '. <code>+' + (s.number || s.userId) + '</code>' + (s.name ? '  (' + s.name + ')' : '');
         }).join('\n')
       : '<i>None connected</i>';
+    const wbStats = await getAuraWbNodeStats();
     bot.sendMessage(msg.chat.id,
-      msgSessions(connected.length, pairing.length, others.length, all.length, lines),
+      msgSessions(connected.length, pairing.length, others.length, all.length, lines, wbStats),
       { parse_mode: 'HTML', reply_markup: KB_BACK }
     );
   });
@@ -824,8 +930,9 @@ function start() {
             return (i + 1) + '. <code>+' + (s.number || s.userId) + '</code>' + (s.name ? '  (' + s.name + ')' : '');
           }).join('\n')
         : '<i>None connected</i>';
+      const wbStats = await getAuraWbNodeStats();
       await bot.editMessageText(
-        msgSessions(connected.length, pairing.length, others.length, all.length, lines),
+        msgSessions(connected.length, pairing.length, others.length, all.length, lines, wbStats),
         { chat_id: chatId, message_id: msgId, parse_mode: 'HTML', reply_markup: KB_BACK }
       ).catch(() => {});
       return;

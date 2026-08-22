@@ -198,27 +198,41 @@ const botConfigSchema = new mongoose.Schema({
 }, { versionKey: false });
 
 // ── Boost Job / Boost Result Schemas ────────────────────────────
-// Shared with SL AURA (same MongoDB). Whichever bot's dashboard
-// triggers a channel boost writes ONE BoostJob here; every other
-// separately-running bot on this DB — UNITY-MD's own sub-sessions,
-// SL AURA's own sub-sessions, and any @astralcore/aura-wb npm/yarn
-// install — polls for it and joins in with its own session(s).
+// Same shared-DB contract sl-aura and @astralcore/aura-wb already use —
+// this is what lets a boost triggered on ANY of the three (dashboard,
+// Telegram management bot, or a WhatsApp .chboost/.chreact command, on
+// any of them) fan out to the other two as well. See boostWatcher.js.
 const boostJobSchema = new mongoose.Schema({
   channelJid: String,
-  type:       { type: String, default: 'boost' }, // 'boost' | 'react' | 'view'
+  msgId:      String, // optional — react to this exact post; if absent, react to the channel's latest
+  type:       { type: String, default: 'boost' },
   emoji:      String,
   createdBy:  String,
-  createdAt:  { type: Date, default: Date.now, expires: 3600 }, // 1h TTL
+  createdAt:  { type: Date, default: Date.now, expires: 3600 },
 }, { versionKey: false });
 
 const boostResultSchema = new mongoose.Schema({
   jobId:     String,
-  sessionId: String,   // unique per bot + per sub-session, e.g. "unity_9477..."
+  sessionId: String,
   number:    String,
   success:   Boolean,
-  at:        { type: Date, default: Date.now, expires: 86400 }, // 24h TTL
+  at:        { type: Date, default: Date.now, expires: 86400 },
 }, { versionKey: false });
 boostResultSchema.index({ jobId: 1, sessionId: 1 }, { unique: true });
+
+// ── npm/yarn install heartbeat (AuraWbNode) ─────────────────────
+// Same collection @astralcore/aura-wb installs upsert themselves into
+// (see aura-wb's nodeHeartbeat.js) — deliberately separate from
+// BoostJob/BoostResult above, purely a live "is this npm install
+// online" registry so this bot's Telegram management bot can show a
+// count too, same as sl-aura's does.
+const auraWbNodeSchema = new mongoose.Schema({
+  sessionId:   { type: String, required: true, unique: true },
+  number:      String,
+  name:        String,
+  connectedAt: { type: Date, default: Date.now },
+  lastSeenAt:  { type: Date, default: Date.now },
+}, { versionKey: false });
 
 // ── Models ────────────────────────────────────────────────────
 const User        = mongoose.model('User',        userSchema);
@@ -231,6 +245,7 @@ const AuthState   = mongoose.model('AuthState',   authStateSchema);
 const BotConfig   = mongoose.model('BotConfig',   botConfigSchema);
 const BoostJob    = mongoose.model('BoostJob',    boostJobSchema);
 const BoostResult = mongoose.model('BoostResult', boostResultSchema);
+const AuraWbNode  = mongoose.model('AuraWbNode',  auraWbNodeSchema);
 
 // ── Commands that are ALWAYS on regardless of toggle ──────────
 // These are system-level commands the owner always needs
@@ -489,7 +504,7 @@ async function useMongoDBAuthState() {
 module.exports = {
   connect,
   User, Group, Stats, Audit, JadiBot, Schedule, AuthState, BotConfig,
-  BoostJob, BoostResult,
+  BoostJob, BoostResult, AuraWbNode,
   getUser, getGroup, getBotConfig,
   isCommandEnabled, toggleCommand,
   ALWAYS_ON_CMDS,

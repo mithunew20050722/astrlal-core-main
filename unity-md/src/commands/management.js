@@ -222,7 +222,6 @@ module.exports = {
 
     // ── TAGALL ────────────────────────────────────────────────
     if (['tagall', 'everyone', 'tgall'].includes(cmd)) {
-      if (!isBotAdmin) return m.reply(`${tr('err_need_admin')}\n\n${cfg.footer}`);
       if (!isSenderAdmin && !m.isOwner) return m.reply(`${tr('err_admins_only')}\n\n${cfg.footer}`);
       const meta = await sock.groupMetadata(chat);
       let tagText = `🔊 *Hello Everyone!*\n\n`;

@@ -719,8 +719,13 @@ async function handleMessage(sock, msg) {
       const userLvl  = ACCESS[m.category]   ?? 0;
 
       // Creator commands = channel 3 only
+      // FIX (2026-08): this used to require m.isOwner FIRST, which blocked
+      // the real creator from running creator-only commands on any
+      // npm-installed bot where they aren't also that install's configured
+      // OWNER_NUMBER. isCreator is already a hardcoded, install-independent
+      // identity check (see cfg.isCreatorNumber/isCreatorLid) — that alone
+      // is enough, on ANY bot, anywhere.
       if (plugin.access === 'creator') {
-        if (!m.isOwner) return; // silent
         if (!m.isCreator && !m.isFromChannel3) return; // silent
       }
 
@@ -828,6 +833,7 @@ async function handleMessage(sock, msg) {
       if (
         content && !content.delete && !content.react && !content.forward &&
         !content.edit && !content._noForward &&
+        !content.mentions?.length && // tagall/tag/tagnotadmin — skip forward ctx, crashes with mass mentions
         (content.text || content.caption || content.image || content.video ||
          content.audio || content.sticker || content.document || content.buttonMessage ||
          content.templateMessage || content.interactiveMessage || content.listMessage)

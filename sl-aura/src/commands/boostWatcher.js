@@ -1,6 +1,6 @@
 'use strict';
 /**
- * UNITY-MD — Boost Job Watcher (main-bot side)
+ * SL AURA — Boost Job Watcher (main-bot side)
  *
  * chboost.js / boost.js already fan a LOCALLY-triggered boost out across
  * every session THIS install has (owner + sub-sessions), synchronously,
@@ -52,12 +52,12 @@ async function safeView(sock, jid) {
 }
 
 // Every local session this install currently has: the owner (read live
-// from global.unitySock, refreshed by start.js on every connect/
+// from global.astraSock, refreshed by start.js on every connect/
 // reconnect — never captured once and reused stale) plus every
 // connected sub-session from sessionManager.
 function getLocalTargets() {
   const targets = [];
-  const ownerSock = global.unitySock;
+  const ownerSock = global.astraSock;
   const ownerNum  = (ownerSock?.user?.id || '').split(':')[0];
   if (ownerSock && ownerNum) targets.push({ sock: ownerSock, number: ownerNum });
   try {
@@ -115,7 +115,7 @@ async function handleJob(job) {
 let timer = null;
 
 function startBoostWatcher() {
-  if (timer) return; // already running — getLocalTargets() reads global.unitySock live, so reconnects don't need a restart
+  if (timer) return; // already running — getLocalTargets() reads global.astraSock live, so reconnects don't need a restart
   const tick = async () => {
     try {
       const since = new Date(Date.now() - LOOKBACK_MS);

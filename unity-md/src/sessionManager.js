@@ -935,6 +935,31 @@ async function clearUserSession(userId) {
   logger.info(`[SESSION] ${userId} auth cleared`);
 }
 
+// ── Main/owner session (display-only) ───────────────────────────
+// BUG FIX (2026-08): start.js already called
+// global.unitySessionManager.registerMainSession(...) on every connect,
+// but this function never existed here — the `if (_sm.registerMainSession)`
+// guard around that call just silently skipped it every time, forever.
+//
+// The main bot's own owner socket is a completely separate Baileys
+// connection from `sessions` above (that Map is sub-users only, each
+// with its own DB-backed auth state via startSession/UserAuthState).
+// Kept in its own slot — deliberately NOT merged into `sessions` or
+// `getAllSessions()` — so it's available for anything that wants it
+// (e.g. getMainSession()) without changing what getAllSessions()
+// returns, which chboost.js/boost.js already rely on to build their
+// fan-out task list (adding the owner there too would double-count it,
+// since those already add the owner as an explicit separate task).
+let mainSession = null; // { userId, sock, connectedAt }
+
+function registerMainSession(userId, sock) {
+  mainSession = { userId, sock, connectedAt: new Date() };
+}
+
+function getMainSession() {
+  return mainSession;
+}
+
 // ── Get session info ──────────────────────────────────────────
 function getSession(userId) {
   return sessions.get(userId) || null;
@@ -992,6 +1017,8 @@ module.exports = {
   getSession,
   getAllSessions,
   restoreActiveSessions,
+  registerMainSession,
+  getMainSession,
   STATUS,
   UserAuthState,
 };

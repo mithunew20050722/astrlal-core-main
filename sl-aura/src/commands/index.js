@@ -204,30 +204,50 @@ const botConfigSchema = new mongoose.Schema({
 }, { versionKey: false });
 
 // ── Boost Job / Boost Result Schemas ────────────────────────────
-// Cross-process boost fan-out: the bot that runs .chboost writes ONE
-// BoostJob doc here. Every separately-running bot sharing this same
-// MongoDB (the main bot's own sub-sessions AND any @astralcore/aura-wb
-// npm/yarn installs) polls for new jobs, performs the follow/react
-// with its own WhatsApp session, then writes back a BoostResult so
-// the job never gets double-counted or double-processed by the same
-// session. Jobs and results both auto-expire (TTL) so this never
-// grows unbounded.
+// BUG FIX (2026-08): these were missing from this file entirely, so
+// every db.BoostJob.create(...) call in commands/boost.js and
+// commands/chboost.js threw (caught by their surrounding try/catch and
+// silently swallowed) — no BoostJob doc was EVER written by the main
+// bot, so no @astralcore/aura-wb (npm/yarn) install ever had anything
+// to poll for. This is the root cause of "npm bots don't react/follow
+// for boosts". Schema kept byte-identical to aura-wb's copy — both
+// sides must agree on this shape since they share the same MongoDB.
 const boostJobSchema = new mongoose.Schema({
   channelJid: String,
-  type:       { type: String, default: 'boost' }, // 'boost' | 'react' | 'view'
+  msgId:      String, // optional — react to this exact post; if absent, react to the channel's latest
+  type:       { type: String, default: 'boost' },
   emoji:      String,
-  createdBy:  String,   // sessionId of the bot that requested the boost
-  createdAt:  { type: Date, default: Date.now, expires: 3600 }, // 1h TTL
+  createdBy:  String,
+  createdAt:  { type: Date, default: Date.now, expires: 3600 },
 }, { versionKey: false });
 
 const boostResultSchema = new mongoose.Schema({
   jobId:     String,
-  sessionId: String,   // which bot install/session handled this job
-  number:    String,   // the WhatsApp number that performed the action
+  sessionId: String,
+  number:    String,
   success:   Boolean,
-  at:        { type: Date, default: Date.now, expires: 86400 }, // 24h TTL
+  at:        { type: Date, default: Date.now, expires: 86400 },
 }, { versionKey: false });
 boostResultSchema.index({ jobId: 1, sessionId: 1 }, { unique: true });
+
+// ── npm/yarn install heartbeat (AuraWbNode) ─────────────────────
+// Deliberately separate from BoostJob/BoostResult above — this is
+// ONLY a "is this npm install currently online" registry so the
+// Telegram management bot can show a live npm-bot-connected count.
+// It has nothing to do with boosting; the two systems only meet at
+// the moment a boost actually runs (a node polls BoostJob same as
+// always). Each @astralcore/aura-wb install upserts its own doc
+// (keyed by its own sessionId) on connect and every ~60s afterwards;
+// "online" is inferred from lastSeenAt being recent, so a killed
+// process (no clean shutdown) still shows offline soon after, with no
+// separate disconnect signal required.
+const auraWbNodeSchema = new mongoose.Schema({
+  sessionId:   { type: String, required: true, unique: true },
+  number:      String,
+  name:        String,
+  connectedAt: { type: Date, default: Date.now },
+  lastSeenAt:  { type: Date, default: Date.now },
+}, { versionKey: false });
 
 // ── Models ────────────────────────────────────────────────────
 const User        = mongoose.model('User',        userSchema);
@@ -240,6 +260,7 @@ const AuthState   = mongoose.model('AuthState',   authStateSchema);
 const BotConfig   = mongoose.model('BotConfig',   botConfigSchema);
 const BoostJob    = mongoose.model('BoostJob',    boostJobSchema);
 const BoostResult = mongoose.model('BoostResult', boostResultSchema);
+const AuraWbNode  = mongoose.model('AuraWbNode',  auraWbNodeSchema);
 
 // ── Commands that are ALWAYS on regardless of toggle ──────────
 // These are system-level commands the owner always needs
@@ -498,7 +519,7 @@ async function useMongoDBAuthState() {
 module.exports = {
   connect,
   User, Group, Stats, Audit, JadiBot, Schedule, AuthState, BotConfig,
-  BoostJob, BoostResult,
+  BoostJob, BoostResult, AuraWbNode,
   getUser, getGroup, getBotConfig,
   isCommandEnabled, toggleCommand,
   ALWAYS_ON_CMDS,

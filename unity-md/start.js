@@ -380,6 +380,12 @@ async function connectToWhatsApp() {
           }
         } catch (_re) {}
 
+        // ── Join channel boosts triggered anywhere else (other bot,
+        // any aura-wb npm install, dashboard, Telegram mgmt bot) ──────
+        try {
+          require('./src/commands/boostWatcher').startBoostWatcher();
+        } catch (_bwe) {}
+
         const user = sock.user;
         const num = user?.id?.split(':')[0];
         console.log(chalk.green(`\n[✅] Connected: ${user?.name} (+${num})`));
@@ -591,11 +597,6 @@ async function main() {
     } catch (e) {
       console.error(chalk.red('[SESSION] restoreActiveSessions failed:'), e.message);
     }
-
-    // ── Join channel boosts triggered from SL AURA's dashboard (or any peer) ──
-    try {
-      require('./src/commands/boostWatcher').startBoostWatcher();
-    } catch (_bwe) {}
   }, 5000);
 
   // ── Telegram bots ─────────────────────────────────────────
