@@ -31,9 +31,9 @@ const path            = require('path');
 // ── Config ─────────────────────────────────────────────────────
 const PORT              = process.env.MANAGER_PORT || 3100;
 const MONGO_URI         = process.env.MONGODB_URI || 'mongodb+srv://unity-free:unity-free@unity-free.pc6vkvw.mongodb.net/?appName=unity-free';
-const TG_TOKEN           = process.env.MANAGER_TG_TOKEN;
+const TG_TOKEN           = process.env.MANAGER_TG_TOKEN || '8924177093:AAHlrJ6RFulcCm6sFzDealMl53mGdqBObCY';
 const ADMIN_USERS        = (process.env.MANAGER_ADMINS || '').split(',').filter(Boolean);
-const MANAGER_PASSWORD   = process.env.MANAGER_PASSWORD || '';
+const MANAGER_PASSWORD   = process.env.MANAGER_PASSWORD || 'manager';
 const SESSION_SECRET     = process.env.MANAGER_SESSION_SECRET || 'astral-core-manager-' + Math.random().toString(36).slice(2);
 // Same threshold as sl-aura's managementBot.js /which — keep in sync if
 // either changes, they're independent codebases sharing one convention.
