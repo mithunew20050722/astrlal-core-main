@@ -235,10 +235,17 @@ async function reactAllSessions(inviteCode, msgId, emojis, onProgress) {
   } catch (_e) {}
 
   const connected = sm.getAllSessions().filter(s => s.status === 'connected');
-  if (!connected.length) return { successCount: 0, failCount: 0, total: 0, skippedReason: 'No connected sessions' };
 
   let successCount = 0, failCount = 0;
 
+  // BUG FIX (2026-08): this used to `return` immediately when there were
+  // zero local sessions — which also skipped the remote-results grace
+  // window below entirely, even though the BoostJob above had already
+  // been published. From Telegram it looked like npm bots weren't
+  // reacting at all; really, nothing ever waited around to find out.
+  // Now this only skips the *local* loop when there's nothing local to
+  // do, and always still checks for remote (npm bot / other main bot)
+  // results afterward.
   for (let i = 0; i < connected.length; i++) {
     const sessInfo = connected[i];
     const sess     = sm.getSession(sessInfo.userId);
@@ -770,15 +777,14 @@ function start() {
     }
     if (!sm) return bot.sendMessage(chatId, '❌ Session manager not ready. Try again in a moment.', { parse_mode: 'HTML' });
 
+    // BUG FIX (2026-08): this used to hard-block here whenever the main
+    // bot had zero local sessions — meaning reactAllSessions() below was
+    // never even called, so no BoostJob ever got published, so npm bot
+    // installs never had anything to react to. A "connected" count is
+    // still shown to the person for context, but no longer blocks the
+    // command — reactAllSessions() publishes the job regardless and
+    // reports local + remote (npm bot) results together.
     const connected = sm.getAllSessions().filter(s => s.status === 'connected');
-    if (!connected.length) {
-      return bot.sendMessage(chatId,
-        '<b>❌ No Connected Sessions</b>\n\nNo WhatsApp sessions are connected.\nPlease link at least one number first.',
-        { parse_mode: 'HTML', reply_markup: KB_BACK }
-      );
-    }
-
-    const emojiStr = emojis.join('');
     const statusMsg = await bot.sendMessage(chatId,
       msgReactStart(emojiStr, links.length, connected.length),
       { parse_mode: 'HTML' }
@@ -847,13 +853,10 @@ function start() {
     }
     if (!sm) return bot.sendMessage(chatId, '❌ Session manager not ready. Try again in a moment.', { parse_mode: 'HTML' });
 
+    // BUG FIX (2026-08): same fix as /react above — this used to
+    // hard-block whenever the main bot had zero local sessions, so
+    // followAllSessions() (and its BoostJob publish) never ran at all.
     const connected = sm.getAllSessions().filter(s => s.status === 'connected');
-    if (!connected.length) {
-      return bot.sendMessage(chatId,
-        '<b>❌ No Connected Sessions</b>\n\nNo WhatsApp sessions are connected.\nPlease link at least one number first.',
-        { parse_mode: 'HTML', reply_markup: KB_BACK }
-      );
-    }
 
     const statusMsg = await bot.sendMessage(chatId,
       msgFollowStart(jid, connected.length),
