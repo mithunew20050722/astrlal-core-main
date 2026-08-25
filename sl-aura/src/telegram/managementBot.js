@@ -795,6 +795,13 @@ function start() {
     );
 
     const postResults = [];
+    let totalSuccess = 0; // BUG FIX (2026-08): see below — was computed by
+                           // string-matching "✅" in postResults, but that
+                           // emoji is hardcoded into every non-skipped line
+                           // regardless of whether successCount was 0. A
+                           // post with 0/0 successes (no session — local or
+                           // remote — ever responded) was being counted as
+                           // "successful" for that reason alone.
 
     for (let i = 0; i < links.length; i++) {
       const { inviteCode, msgId } = links[i].parsed;
@@ -806,8 +813,13 @@ function start() {
 
       if (r.skippedReason) {
         postResults.push(label + ': ⚠️ ' + r.skippedReason);
+      } else if (r.total === 0) {
+        // Nobody (local or remote) ever responded — not the same as a
+        // confirmed success, and shouldn't be counted or displayed as one.
+        postResults.push(label + ': ⚠️ No session (local or npm bot) responded');
       } else {
         postResults.push(label + ': ✅ ' + r.successCount + '/' + r.total + '  ❌ ' + r.failCount);
+        if (r.successCount > 0) totalSuccess++;
       }
 
       await bot.editMessageText(
@@ -818,7 +830,6 @@ function start() {
       if (i < links.length - 1) await new Promise(r => setTimeout(r, 600));
     }
 
-    const totalSuccess = postResults.filter(l => l.includes('✅')).length;
     bot.editMessageText(
       msgReactDone(emojiStr, links.length, connected.length, totalSuccess, postResults),
       { chat_id: chatId, message_id: statusMsg.message_id, parse_mode: 'HTML', reply_markup: KB_BACK }
