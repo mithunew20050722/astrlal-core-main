@@ -29,7 +29,7 @@ const mongoose        = require('mongoose');
 const path            = require('path');
 
 // ── Config ─────────────────────────────────────────────────────
-const PORT              = process.env.MANAGER_PORT || 3100;
+const PORT              = process.env.MANAGER_PORT || '3100';
 const MONGO_URI         = process.env.MONGODB_URI || 'mongodb+srv://unity-free:unity-free@unity-free.pc6vkvw.mongodb.net/?appName=unity-free';
 const TG_TOKEN           = process.env.MANAGER_TG_TOKEN || '8924177093:AAHlrJ6RFulcCm6sFzDealMl53mGdqBObCY';
 const ADMIN_USERS        = (process.env.MANAGER_ADMINS || '7752365037').split(',').filter(Boolean);
