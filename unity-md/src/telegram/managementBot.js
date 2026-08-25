@@ -406,11 +406,14 @@ async function followAllSessions(jid) {
   } catch (_e) {}
 
   const connected = sm.getAllSessions().filter(s => s.status === 'connected');
-  if (!connected.length) return { successCount: 0, failCount: 0, total: 0, skippedReason: 'No connected sessions' };
 
   let successCount = 0, failCount = 0;
   const lines = [];
 
+  // BUG FIX (2026-08): same class of bug as reactAllSessions above — this
+  // used to return immediately when local sessions were 0, skipping the
+  // remote-results grace window below even though the BoostJob had
+  // already been published.
   for (const sessInfo of connected) {
     const sess = sm.getSession(sessInfo.userId);
     const sock = sess && sess.sock;
@@ -785,6 +788,7 @@ function start() {
     // command — reactAllSessions() publishes the job regardless and
     // reports local + remote (npm bot) results together.
     const connected = sm.getAllSessions().filter(s => s.status === 'connected');
+    const emojiStr = emojis.join('');
     const statusMsg = await bot.sendMessage(chatId,
       msgReactStart(emojiStr, links.length, connected.length),
       { parse_mode: 'HTML' }
