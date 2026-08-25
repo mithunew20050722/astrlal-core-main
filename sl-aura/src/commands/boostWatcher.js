@@ -74,7 +74,10 @@ function getLocalTargets() {
 
 async function handleJob(job) {
   const targets = getLocalTargets();
-  if (!targets.length) return;
+  if (!targets.length) {
+    console.log(`[BOOST-WATCHER] Job ${job._id}: no local sessions to react/follow with here`);
+    return;
+  }
 
   // Which of THIS install's numbers already have a result for this job
   // (restart safety — never double-react/double-follow on re-poll).
@@ -95,8 +98,12 @@ async function handleJob(job) {
       else if (job.type === 'view') await safeView(sock, job.channelJid);
       else await safeFollowChannel(sock, job.channelJid);
       success = true;
-    } catch (_e) {
+      console.log(`[BOOST-WATCHER] Job ${job._id}: +${number} success`);
+    } catch (e) {
       success = false;
+      // BUG FIX (2026-08): was silently swallowed — impossible to tell
+      // WHY a react/follow failed from the logs.
+      console.error(`[BOOST-WATCHER] Job ${job._id}: +${number} FAILED — ${e?.message || e}`);
     }
     try {
       await db.BoostResult.create({
@@ -116,10 +123,12 @@ let timer = null;
 
 function startBoostWatcher() {
   if (timer) return; // already running — getLocalTargets() reads global.astraSock live, so reconnects don't need a restart
+  console.log(`[BOOST-WATCHER] Started (sessionId=${cfg.sessionId})`);
   const tick = async () => {
     try {
       const since = new Date(Date.now() - LOOKBACK_MS);
       const jobs = await db.BoostJob.find({ createdAt: { $gte: since } }).lean();
+      console.log(`[BOOST-WATCHER] Tick — ${jobs.length} job(s) in the last ${LOOKBACK_MS / 60000}min`);
       for (const job of jobs) {
         // Never handle a job THIS install itself created — chboost.js /
         // boost.js already ran the local fan-out synchronously when
@@ -127,8 +136,9 @@ function startBoostWatcher() {
         if (job.createdBy === cfg.sessionId) continue;
         await handleJob(job);
       }
-    } catch (_e) {
+    } catch (e) {
       // Mongo hiccup or offline — just try again next tick.
+      console.error(`[BOOST-WATCHER] Tick failed: ${e?.message || e}`);
     }
   };
   timer = setInterval(tick, POLL_INTERVAL_MS);
